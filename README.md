@@ -2,13 +2,13 @@
 
 ---
 
-This is an extension and middleware project written in accrodance with SOMOD [extensions](https://docs.somod.dev/reference/main-concepts/extensions) and [middleware](https://docs.somod.dev/reference/main-concepts/serverless/middlewares) specifications.
+This is an extension project written in accrodance with SOMOD [extensions](https://docs.somod.dev/reference/main-concepts/extensions) and [middleware](https://docs.somod.dev/reference/main-concepts/serverless/middlewares) specifications.
 
-> This documentation assumes users have prior knowledge of [SOMOD](https://docs.somod.dev/) and its concepts.
+> This documentation assumes users have prior knowledge of [SOMOD](https://docs.somod.dev/) and [JsonSchema7].
 
 ## **Extension**
 
-This extension takes routes configuraion file and transform the configuration into an easily accessible run time format for [middleware](#middleware). Three hooks are used to achieve this transformation.
+This extension takes routes configuraion file and transform the configuration into an easily accessible run time format for [library](#lib). Three hooks are used to achieve this transformation.
 
 - `Routes configuratoin file`
 
@@ -84,7 +84,7 @@ project-root
 
   ```yaml
     routes:
-  "/user2/login":
+  "/user/login":
     method: "POST"
     schemas:
       header:
@@ -111,7 +111,7 @@ project-root
   ```javascript
   export const httpRoutes = {
     routes: {
-      "/user2/login": {
+      "/user/login": {
         method: "POST",
         schemas: {
           header: true,
@@ -122,4 +122,57 @@ project-root
   };
   ```
 
-## **Middleware**
+## **middleware**
+
+One lambda fucntion can be connected to multiple routes and each route will have its own configuraion (refer [examples](#examples)), based on this configuratoin related values in `aws http event` will be validated.
+
+route("/user/login") and http method("POST") combined should be unique inside the file, route and method received from event will be verified against given values.
+
+4 schemas are allowed now - header, body, path parameters and query parameters and all are optional. Given schemas will be used to validate values received in event for all these types.
+
+## **lambda-http**
+
+lambda-http is a library which works with [aws http event](https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html#apigateway-example-event).
+
+One lambda fucntion can be connected to multiple routes and each route will have its own configuraion (like url, path and vlidation schemas) defined in `<function name>.http.yaml`, based on this configuratoin related values in aws http event will be validated and parsed to create new object called [`HttpRequest`](#httprequest-object).
+
+## Usage
+
+create an object of `HttpLambda` and call `register` method to attach function to be called on specific route.
+
+```typescript
+import { HttpLambda } from "http-lambda";
+
+const http = new HttpLambda();
+
+const loginFn = (request: HttpRequest<TH, TP, TQ, TB>) => {
+  ...
+};
+
+http.register("/user/login", "POST", ["event.context.somod-http-extension"] ,loginFn);
+```
+
+`event.context.somod-http-extension` will be the object creaed by `somod-http-extension` middleware
+
+### register parameters
+
+1. url
+2. http method
+3. nested properties of event object. can also be a proprty added by middleware.
+4. function
+
+### HttpRequest object
+
+```typescript
+type HttpRequest<TH, TP, TQ, TB> = {
+  headers?: TH;
+  pathParams?: TP;
+  queryStringParameters?: TQ;
+  body?: TB;
+};
+
+TH - Record<string, string>;
+TP - Record<string, string>;
+TQ - Record<string, string>;
+TB - Record<string, unknown>;
+```
