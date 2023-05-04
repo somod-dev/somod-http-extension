@@ -1,0 +1,53 @@
+{
+  "name": "somod-http-extension-2",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "prettier": "npx prettier --check --ignore-unknown --no-error-on-unmatched-pattern ./**/*",
+    "eslint": "npx eslint ./ --no-error-on-unmatched-pattern",
+    "prebuild": "npm run prettier && npm run eslint",
+    "build": "npx somod build",
+    "pretest": "npm run build",
+    "test": "echo 'No Tests'",
+    "prepack": "npm run test",
+    "start": "npx somod start",
+    "deploy": "npx somod deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.115",
+    "@types/react": "^18.0.38",
+    "aws-sdk": "^2.1363.0",
+    "eslint-config-next": "^13.3.1",
+    "eslint-config-sodaru": "^1.0.1",
+    "next": "^12.3.4",
+    "prettier-config-sodaru": "^1.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "somod": "^1.17.0",
+    "somod-middleware": "^1.17.0"
+  },
+  "module": "build/lib/index.js",
+  "typings": "build/lib/index.d.ts",
+  "files": [
+    "build"
+  ],
+  "sideEffects": false,
+  "somod": "1.17.0",
+  "dependencies": {
+    "@types/ajv": "^1.0.0",
+    "@types/js-yaml": "^4.0.5",
+    "ajv": "^8.12.0",
+    "decorated-ajv": "^1.1.0",
+    "js-yaml": "^4.1.0",
+    "nodejs-file-utils": "^1.0.2"
+  },
+  "eslintConfig": {
+    "extends": [
+      "sodaru"
+    ]
+  },
+  "prettier": "prettier-config-sodaru"
+}
