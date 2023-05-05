@@ -7,6 +7,8 @@ import {
 import { JSONSchema7 } from "json-schema";
 
 export type AuthorizerContextType = Record<string, unknown>;
+export type Copy<T> = { [K in keyof T]: T[K] };
+
 export type EventType =
   APIGatewayProxyEventV2WithLambdaAuthorizer<AuthorizerContextType>;
 
@@ -36,16 +38,35 @@ export type RouteOptions = {
 export enum ParameterTypes {
   "header" = "header",
   "body" = "body",
-  "pathParameters" = "pathParameters"
+  "pathParameters" = "pathParameters",
+  "queryStringParameters" = "queryStringParameters"
 }
 
 export type ParserType = Record<string, (event: EventType) => unknown>;
 
-export type HttpRequest = {
+export type HttpRequest<TBody = Record<string, unknown>> = {
   [ParameterTypes.header]?: APIGatewayProxyEventHeaders;
-  pathParams?: APIGatewayProxyEventPathParameters;
-  queryStringParameters?: APIGatewayProxyEventQueryStringParameters;
-  [ParameterTypes.body]?: Record<string, unknown>;
+  [ParameterTypes.pathParameters]?: APIGatewayProxyEventPathParameters;
+  [ParameterTypes.queryStringParameters]?: APIGatewayProxyEventQueryStringParameters;
+  [ParameterTypes.body]?: TBody;
 };
 
+export type HttpResponse = {
+  statusCode: number;
+  body?: string;
+  headers?: Record<string, string>;
+};
+
+export type DefaultAdditionalParametersType = Record<string, unknown>;
+export type DefaultBodyType = Record<string, unknown>;
+
+export type LambdaFunctionType<
+  TBody = DefaultBodyType,
+  TAdditionalParams = DefaultAdditionalParametersType
+> = (
+  request: HttpRequest<TBody>,
+  additionalParams?: TAdditionalParams
+) => Promise<string | Record<string, unknown> | void>;
+
 export const LAYERS_BASE_PATH = "/opt/routes/";
+export const MODULE_NAME = "somod-http-extension";

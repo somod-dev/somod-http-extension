@@ -3,6 +3,7 @@
 
 import { Middleware } from "somod";
 import {
+  Copy,
   EventType,
   HttpRequest,
   LAYERS_BASE_PATH,
@@ -12,7 +13,7 @@ import {
   Routes
 } from "../../lib/types";
 import { encodeFileSystem, parsePathParams } from "../../lib/utils";
-type Copy<T> = { [K in keyof T]: T[K] };
+
 const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
   let route = {} as RouteOptions;
   try {
