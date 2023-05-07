@@ -5,12 +5,8 @@ import { EventType } from "./types";
  *
  * TODO:check the logic of below function
  */
-export const encodeFileSystem = (
-  path: string,
-  method: string,
-  type: string
-) => {
-  return path.replace(/\//g, "#") + method + type + ".js";
+export const encodeFileSystem = (routeKey: string, key: string) => {
+  return routeKey.replace(/[/$ ]/g, "#") + key + ".js";
 };
 
 export const parsePathParams = (

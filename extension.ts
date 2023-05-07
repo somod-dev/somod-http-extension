@@ -15,7 +15,7 @@ import {
 } from "nodejs-file-utils";
 import { Extension, IContext, Module } from "somod";
 import { schema } from "./routes-schema";
-import { RouteConfigOptions } from "./lib/types";
+import { RouteConfigOptions, Routes } from "./lib/types";
 import { encodeFileSystem } from "./lib/utils";
 
 type Hook = Extension["prebuild"];
@@ -147,12 +147,14 @@ export const prepare: Hook = async (context: IContext) => {
           __routeFileName + HTTP_JSON
         );
 
+        const _routesTransformed = {} as Routes;
         const routes = await readJsonFileStore(_routeFilePath);
         await Promise.all(
-          Object.keys(routes).map(async route => {
-            const routeOptions = routes[route] as RouteConfigOptions;
+          Object.keys(routes).map(async routeKey => {
+            const routeConfigOptions = routes[routeKey] as RouteConfigOptions;
+            _routesTransformed[routeKey] = { schemas: [] };
 
-            const _compiledSchemaDir = path.join(
+            const _schemaDir = path.join(
               root.module.packageLocation,
               SOMOD,
               SERVERLESS,
@@ -162,41 +164,31 @@ export const prepare: Hook = async (context: IContext) => {
             );
 
             await Promise.all(
-              Object.keys(routeOptions.schemas).map(async type => {
-                const _compiledSchemaFileName = encodeFileSystem(
-                  route,
-                  routeOptions.method,
-                  type
-                );
-                const _compiledSchemaFilePath = path.join(
-                  _compiledSchemaDir,
-                  _compiledSchemaFileName
-                );
+              Object.keys(routeConfigOptions.schemas).map(async key => {
+                const _schemaFileName = encodeFileSystem(routeKey, key);
+                const _schemaFilePath = path.join(_schemaDir, _schemaFileName);
 
-                await mkdir(_compiledSchemaDir, { recursive: true });
+                await mkdir(_schemaDir, { recursive: true });
 
                 await writeCompiledSchema(
-                  _compiledSchemaFilePath,
-                  routeOptions.schemas[type]
+                  _schemaFilePath,
+                  routeConfigOptions.schemas[key]
                 );
-                routeOptions.schemas[type] = true;
+                _routesTransformed[routeKey].schemas.push(key);
               })
             );
 
-            const _routesOutputPath = path.join(
-              _compiledSchemaDir,
-              ROUTE_FILE_NAME
-            );
+            const _routesOutputPath = path.join(_schemaDir, ROUTE_FILE_NAME);
 
             await writeFile(
               _routesOutputPath,
-              "export const routes = " + JSON.stringify(routes)
+              "export const routes = " + JSON.stringify(_routesTransformed)
             );
 
             const layer = {
               Type: AWS_SERVERLESS_LAYER_VERSION,
               Properties: {
-                ContentUri: _compiledSchemaDir
+                ContentUri: _schemaDir
               }
             };
 

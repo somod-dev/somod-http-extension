@@ -1,26 +1,20 @@
 /* eslint-disable no-console */
 // serverless/functions/middlewares/myMiddleware.ts
 
-import { Middleware } from "somod";
+import { EventWithMiddlewareContext, Middleware } from "somod";
 import {
   Copy,
   EventType,
-  HttpRequest,
   LAYERS_BASE_PATH,
-  ParameterTypes,
-  ParserType,
   RouteOptions,
   Routes
 } from "../../lib/types";
-import { encodeFileSystem, parsePathParams } from "../../lib/utils";
+import { encodeFileSystem } from "../../lib/utils";
 
 const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
-  let route = {} as RouteOptions;
+  let routeOptions = {} as RouteOptions;
   try {
-    route = await getRoute(
-      event.requestContext.http.method,
-      event.requestContext.http.path
-    );
+    routeOptions = await getRoute(event.routeKey);
   } catch (error) {
     /**
      * TODO: log error here
@@ -31,17 +25,11 @@ const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
     };
   }
 
-  const httpRequest: HttpRequest = parseRequest(event, getParsers());
-
   try {
-    await validateParameters(
-      httpRequest,
-      event.requestContext.http.path,
-      route
-    );
+    await validateParameters(event, routeOptions);
   } catch (error) {
     /**
-     * TODO: log error here
+     * TODO: do we need to log error here
      */
     return {
       statusCode: 404,
@@ -49,7 +37,7 @@ const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
     };
   }
 
-  event.somodMiddlewareContext.set("somod-http-extension", httpRequest);
+  // event.somodMiddlewareContext.set("somod-http-extension");
 
   const result = await next();
 
@@ -58,51 +46,44 @@ const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
   return result;
 };
 
-const getRoute = async (
-  method: string,
-  path: string
-): Promise<RouteOptions> => {
+const getRoute = async (routeKey: string): Promise<RouteOptions> => {
   const routesFilePath = "/opt/routes.js";
   // eslint-disable-next-line import/no-unresolved
   const routes: Routes = await import(routesFilePath);
 
-  if (routes[path] == undefined || routes[path].method !== method) {
+  if (!routes || routes[routeKey] == undefined) {
     throw new Error("path did not match");
   }
 
-  return routes[path];
-};
-
-const getParsers = (): ParserType => {
-  const parsers: ParserType = {};
-  parsers[ParameterTypes.pathParameters] = parsePathParams;
-  return parsers;
-};
-
-const parseRequest = (event: EventType, parsers: ParserType) => {
-  const parsedValues = Object.keys(parsers).map(type => {
-    const params = parsers[type](event);
-    return { type: params };
-  });
-
-  return parsedValues as HttpRequest;
+  return routes[routeKey];
 };
 
 const validateParameters = async (
-  httpRequest: HttpRequest,
-  path: string,
-  route: RouteOptions
+  event: EventWithMiddlewareContext<Copy<EventType>>,
+  routeOptions: RouteOptions
 ): Promise<void> => {
-  Object.keys(route.schemas).map(async type => {
-    if (route.schemas[type]) {
-      const validateFilePath = encodeFileSystem(path, route.method, type);
-      const validate = await import(LAYERS_BASE_PATH + validateFilePath);
-
-      if (!validate(httpRequest[type])) {
-        throw new Error(validate.errors);
-      }
+  Object.keys(routeOptions.schemas).map(async key => {
+    const validateFilePath = encodeFileSystem(event.routeKey, key);
+    const validate = await import(LAYERS_BASE_PATH + validateFilePath);
+    const validateObj = getEventPropertyByKey(event, key);
+    if (!validate(validateObj)) {
+      throw new Error(validate.errors);
     }
   });
+};
+
+const getEventPropertyByKey = (
+  event: EventWithMiddlewareContext<Copy<EventType>>,
+  key: string
+) => {
+  /**
+   * check if this should be deep copy, because event is readonly
+   */
+  let _event = event;
+  key.split(".").forEach(_key => {
+    _event = _event[_key];
+  });
+  return _event;
 };
 
 export default myMiddleware;
