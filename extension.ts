@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {
   JSONSchema7,
   Violation,
@@ -61,6 +62,7 @@ export const prebuild: Hook = async (context: IContext) => {
     const doc = await readYamlFileStore(routePath);
     const violations: Violation[] = await validate(schema, doc);
     if (violations.length > 0) {
+      console.log("error - " + violations[0].message);
       throw violations[0].message;
     }
   }
@@ -257,3 +259,5 @@ const parseFunctions = (template: JSONObjectType) => {
   });
   return functions;
 };
+
+export const functionMiddlewares = ["httpMiddleware1"];

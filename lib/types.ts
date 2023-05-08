@@ -33,13 +33,6 @@ export enum ParameterTypes {
 
 export type ParserType = Record<string, (event: EventType) => unknown>;
 
-// export type HttpRequest<TBody = Record<string, unknown>> = {
-//   [ParameterTypes.header]?: APIGatewayProxyEventHeaders;
-//   [ParameterTypes.pathParameters]?: APIGatewayProxyEventPathParameters;
-//   [ParameterTypes.queryStringParameters]?: APIGatewayProxyEventQueryStringParameters;
-//   [ParameterTypes.body]?: TBody;
-// };
-
 export type HttpResponse = {
   statusCode: number;
   body?: string;
