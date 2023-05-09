@@ -8,8 +8,8 @@ import {
   LAYERS_BASE_PATH,
   RouteOptions,
   Routes
-} from "../../lib/types";
-import { encodeFileSystem } from "../../lib/utils";
+} from "../../../lib/types";
+import { encodeFileSystem } from "../../../lib/utils";
 
 const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
   let routeOptions = {} as RouteOptions;

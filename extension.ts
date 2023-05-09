@@ -104,6 +104,7 @@ export const build: Hook = async (context: IContext) => {
 };
 
 export const prepare: Hook = async (context: IContext) => {
+  console.log("prepare called");
   const root = context.moduleHandler.getModule(
     context.moduleHandler.roodModuleName
   );
@@ -187,6 +188,11 @@ export const prepare: Hook = async (context: IContext) => {
               "export const routes = " + JSON.stringify(_routesTransformed)
             );
 
+            /**
+             * TODO: generate layer name accroding to somod
+             */
+            const layerResourceName =
+              "myLayer" + new Date().getUTCMilliseconds();
             const layer = {
               Type: AWS_SERVERLESS_LAYER_VERSION,
               Properties: {
@@ -194,11 +200,24 @@ export const prepare: Hook = async (context: IContext) => {
               }
             };
 
-            const layers = (func["Properties"] as JSONObjectType)[
+            let layers = (func["Properties"] as JSONObjectType)[
               LAYERS
-            ] as JSONObjectType[];
+            ] as string[];
 
-            layers.push(layer);
+            if (!layers) {
+              layers = [];
+            }
+
+            console.log("layers");
+            console.log(layers);
+
+            layers.push("!Ref " + layerResourceName);
+
+            console.log("layers updated");
+            console.log(layers);
+
+            (template["Resources"] as JSONObjectType)[layerResourceName] =
+              layer;
           })
         );
       }
@@ -206,6 +225,7 @@ export const prepare: Hook = async (context: IContext) => {
   );
   updateYamlFileStore(templateFile, template);
   saveYamlFileStore(templateFile);
+  console.log("prepare Ended");
 };
 
 const writeCompiledSchema = async (fileName: string, schema: JSONSchema7) => {
@@ -260,4 +280,4 @@ const parseFunctions = (template: JSONObjectType) => {
   return functions;
 };
 
-export const functionMiddlewares = ["httpMiddleware1"];
+// export const functionMiddlewares = ["httpMiddleware1"];

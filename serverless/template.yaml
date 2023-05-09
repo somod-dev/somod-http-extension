@@ -1,0 +1,9 @@
+Resources:
+  httpMiddleware1:
+    Type: SOMOD::Serverless::FunctionMiddleware
+    Properties:
+      CodeUri:
+        SOMOD::FunctionMiddleware:
+          name: httpMiddleware
+          allowedTypes:
+            - httpMiddlewareType
