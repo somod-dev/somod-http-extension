@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: nodejs16.x
+    Handler: index.default
+    Architectures:
+      - arm64
+Resources:
+  httpMiddleware1:
+    Type: SOMOD::Serverless::FunctionMiddleware
+    Properties:
+      CodeUri:
+        SOMOD::FunctionMiddleware:
+          name: httpMiddleware
+          allowedTypes:
+            - httpMiddlewareType
