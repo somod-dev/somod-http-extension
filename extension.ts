@@ -211,7 +211,7 @@ export const prepare: Hook = async (context: IContext) => {
             console.log("layers");
             console.log(layers);
 
-            layers.push("!Ref " + layerResourceName);
+            layers.push(layerResourceName);
 
             console.log("layers updated");
             console.log(layers);
