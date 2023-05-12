@@ -6,4 +6,4 @@ Resources:
         SOMOD::FunctionMiddleware:
           name: httpMiddleware
           allowedTypes:
-            - httpMiddlewareType
+            - HttpApi

@@ -193,6 +193,7 @@ export const prepare: Hook = async (context: IContext) => {
              */
             const layerResourceName =
               "myLayer" + new Date().getUTCMilliseconds();
+
             const layer = {
               Type: AWS_SERVERLESS_LAYER_VERSION,
               Properties: {
@@ -202,7 +203,7 @@ export const prepare: Hook = async (context: IContext) => {
 
             let layers = (func["Properties"] as JSONObjectType)[
               LAYERS
-            ] as string[];
+            ] as Record<string, string>[];
 
             if (!layers) {
               layers = [];
@@ -211,7 +212,7 @@ export const prepare: Hook = async (context: IContext) => {
             console.log("layers");
             console.log(layers);
 
-            layers.push(layerResourceName);
+            layers.push({ Ref: layerResourceName });
 
             console.log("layers updated");
             console.log(layers);
