@@ -3,12 +3,13 @@
 
 import { EventWithMiddlewareContext, Middleware } from "somod";
 import {
+  BODY,
   Copy,
   EventType,
   KeyOptions,
   LAYERS_BASE_PATH,
-  Options,
-  RoutesTransformed
+  RoutesTransformed,
+  ValueType
 } from "../../../lib/types";
 import { encodeFileSystem } from "../../../lib/utils";
 
@@ -71,11 +72,15 @@ const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
 
 const validateParameters = async (
   event: EventWithMiddlewareContext<Copy<EventType>>,
-  keyOptions: Options
+  keyOptions: KeyOptions
 ): Promise<void> => {
   console.log("inside validateParameters");
   await Promise.all(
     Object.keys(keyOptions).map(async key => {
+      if (!keyOptions[key].schema) {
+        return;
+      }
+
       const validateFilePath = encodeFileSystem(event.routeKey, key);
       const path = LAYERS_BASE_PATH + validateFilePath;
       console.log("Path is ");
@@ -84,7 +89,12 @@ const validateParameters = async (
       let validate = await import(path);
       console.log("import passed");
       console.log(validate);
-      const _obj = getEventPropertyByKey(event, key);
+      let _obj = getEventPropertyByKey(event, key);
+
+      if (key === BODY) {
+        _obj = parseBody(_obj as string, key, keyOptions[key].type);
+      }
+
       console.log(_obj);
       // eslint-disable-next-line prefer-const
       let valid = validate.default;
@@ -100,10 +110,19 @@ const validateParameters = async (
   );
 };
 
+const parseBody = (obj: string, key: string, type?: string) => {
+  if (type === ValueType.object) {
+    obj = JSON.parse(obj);
+  } else if (type === ValueType.integer) {
+    obj = parseInt(obj) as unknown as string;
+  }
+  return obj;
+};
+
 const getEventPropertyByKey = (
   event: EventWithMiddlewareContext<Copy<EventType>>,
   key: string
-) => {
+): unknown => {
   /**
    * check if this should be deep copy, because event is readonly
    */

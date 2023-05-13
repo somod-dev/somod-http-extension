@@ -28,10 +28,18 @@ export enum HttpMethod {
   "HEAD" = "HEAD"
 }
 
+export const BODY = "body";
+
 export type Options = {
   schema?: JSONSchema7 | boolean;
-  type?: "string" | "object" | "integer";
+  type?: ValueType;
 };
+
+export enum ValueType {
+  "string" = "string",
+  "object" = "object",
+  "integer" = "integer"
+}
 
 export enum ParameterTypes {
   "header" = "header",
