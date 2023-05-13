@@ -5,32 +5,45 @@ import { EventWithMiddlewareContext, Middleware } from "somod";
 import {
   Copy,
   EventType,
+  KeyOptions,
   LAYERS_BASE_PATH,
-  RouteOptions,
-  Routes
+  Options,
+  RoutesTransformed
 } from "../../../lib/types";
 import { encodeFileSystem } from "../../../lib/utils";
 
+const Routes_FILE_PATH = "/opt/routes.js";
+
 const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
-  let routeOptions = {} as RouteOptions;
+  let keyOptions = {} as KeyOptions;
   try {
     console.log("inside myMiddleware");
-    routeOptions = await getRoute(event.routeKey);
-    console.log("routeOptions");
-    console.log(routeOptions);
+
+    // eslint-disable-next-line import/no-unresolved
+    const _obj = await import(Routes_FILE_PATH);
+    const routes = _obj.routes as RoutesTransformed;
+    keyOptions = routes[event.routeKey] as KeyOptions;
+    if (!routes || !keyOptions) {
+      return {
+        statusCode: 404,
+        body: "request url doesnot exists"
+      };
+    }
+    console.log("keyOptions");
+    console.log(keyOptions);
   } catch (error) {
     /**
      * TODO: log error here
      */
-    console.log("Error getRoute myMiddleware");
+    console.log("Error getting the given route myMiddleware");
     return {
       statusCode: 404,
-      body: "request url doesnot exists"
+      body: "request url doesnot match routes configuration"
     };
   }
 
   try {
-    await validateParameters(event, routeOptions);
+    await validateParameters(event, keyOptions);
   } catch (error) {
     /**
      * TODO: do we need to log error here
@@ -43,47 +56,26 @@ const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
     };
   }
 
+  /**
+   * TODO: for testing to be removed
+   */
   event.somodMiddlewareContext.set("somod-http-extension", {
     testing: "sample meddleware context testing"
   });
 
   let result: unknown = null;
-  // try {
   result = await next();
-  //   console.log("result is ");
-  //   console.log(result);
-  // } catch (error) {
-  //   return {
-  //     statusCode: 404,
-  //     body: error.message
-  //   };
-  // }
 
   return result;
 };
 
-const getRoute = async (routeKey: string): Promise<RouteOptions> => {
-  const routesFilePath = "/opt/routes.js";
-  // eslint-disable-next-line import/no-unresolved
-  const _obj = await import(routesFilePath);
-  const routes = _obj.routes as Routes;
-  console.log("routes");
-  console.log(routes);
-  if (!routes || routes[routeKey] == undefined) {
-    throw new Error("path did not match");
-  }
-
-  return routes[routeKey];
-};
-
 const validateParameters = async (
   event: EventWithMiddlewareContext<Copy<EventType>>,
-  routeOptions: RouteOptions
+  keyOptions: Options
 ): Promise<void> => {
   console.log("inside validateParameters");
   await Promise.all(
-    routeOptions.schemas.map(async key => {
-      console.log(key);
+    Object.keys(keyOptions).map(async key => {
       const validateFilePath = encodeFileSystem(event.routeKey, key);
       const path = LAYERS_BASE_PATH + validateFilePath;
       console.log("Path is ");
@@ -116,9 +108,13 @@ const getEventPropertyByKey = (
    * check if this should be deep copy, because event is readonly
    */
   let _event = event;
-  key.split(".").forEach(_key => {
-    _event = _event[_key];
-  });
+  try {
+    key.split(".").forEach(_key => {
+      _event = _event[_key];
+    });
+  } catch (error) {
+    throw new Error(`given key - ${key} not found in event object `);
+  }
   return _event;
 };
 

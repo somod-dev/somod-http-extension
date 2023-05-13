@@ -13,15 +13,24 @@ export type CustomEventType<TBody = Record<any, unknown>> =
     body: TBody;
   };
 
-export type RoutesConfig = Record<string, RouteConfigOptions>;
-export type Routes = Record<string, RouteOptions>;
+export type Routes = Record<string, HttpMethodOptions>;
+export type RoutesTransformed = Record<string, KeyOptions>;
 
-export type RouteConfigOptions = {
-  schemas: Record<string, JSONSchema7>;
-};
+export type HttpMethodOptions = Record<HttpMethod, KeyOptions>;
 
-export type RouteOptions = {
-  schemas: string[];
+export type KeyOptions = Record<string, Options>;
+
+export enum HttpMethod {
+  "GET" = "GET",
+  "POST" = "POST",
+  "PUT" = "PUT",
+  "DELETE" = "DELETE",
+  "HEAD" = "HEAD"
+}
+
+export type Options = {
+  schema?: JSONSchema7 | boolean;
+  type?: "string" | "object" | "integer";
 };
 
 export enum ParameterTypes {

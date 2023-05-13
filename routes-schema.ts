@@ -5,16 +5,22 @@ export const schema: JSONSchema7 = {
   patternProperties: {
     "^[ A-Za-z0-9_@./#&+-]*$": {
       type: "object",
+      minProperties: 1,
       additionalProperties: false,
-      properties: {
-        schemas: {
-          type: "object",
-          properties: {
-            header: {
-              $ref: "http://json-schema.org/draft-07/schema"
-            },
-            body: {
-              $ref: "http://json-schema.org/draft-07/schema"
+      patternProperties: {
+        "^(GET|POST|PUT|DELETE|HEAD)$": {
+          additionalProperties: false,
+          patternProperties: {
+            ".": {
+              type: "object",
+              minProperties: 1,
+              additionalProperties: false,
+              properties: {
+                schema: {
+                  $ref: "http://json-schema.org/draft-07/schema"
+                },
+                type: { enum: ["string", "object", "integer"] }
+              }
             }
           }
         }

@@ -15,9 +15,15 @@ import {
   updateYamlFileStore
 } from "nodejs-file-utils";
 import { Extension, IContext, Module } from "somod";
-import { schema } from "./routes-schema";
-import { RouteConfigOptions, Routes } from "./lib/types";
+import {
+  HttpMethodOptions,
+  KeyOptions,
+  Options,
+  Routes,
+  RoutesTransformed
+} from "./lib/types";
 import { encodeFileSystem } from "./lib/utils";
+import { schema } from "./routes-schema";
 
 type Hook = Extension["prebuild"];
 
@@ -150,12 +156,11 @@ export const prepare: Hook = async (context: IContext) => {
           __routeFileName + HTTP_JSON
         );
 
-        const _routesTransformed = {} as Routes;
-        const routes = await readJsonFileStore(_routeFilePath);
+        const _tRoutes = {} as RoutesTransformed;
+        const routes = (await readJsonFileStore(_routeFilePath)) as Routes;
         await Promise.all(
-          Object.keys(routes).map(async routeKey => {
-            const routeConfigOptions = routes[routeKey] as RouteConfigOptions;
-            _routesTransformed[routeKey] = { schemas: [] };
+          Object.keys(routes).map(async route => {
+            const _rOptions = routes[route] as HttpMethodOptions;
 
             const _schemaDir = path.join(
               root.module.packageLocation,
@@ -167,17 +172,32 @@ export const prepare: Hook = async (context: IContext) => {
             );
 
             await Promise.all(
-              Object.keys(routeConfigOptions.schemas).map(async key => {
-                const _schemaFileName = encodeFileSystem(routeKey, key);
+              Object.keys(_rOptions).map(async method => {
+                const _schemaFileName = encodeFileSystem(route, method);
                 const _schemaFilePath = path.join(_schemaDir, _schemaFileName);
-
                 await mkdir(_schemaDir, { recursive: true });
+                const _mOptions = _rOptions[method] as KeyOptions;
 
-                await writeCompiledSchema(
-                  _schemaFilePath,
-                  routeConfigOptions.schemas[key]
+                const _routekey = `${method} ${route}`;
+                _tRoutes[_routekey] = {};
+
+                await Promise.all(
+                  Object.keys(_mOptions).map(async key => {
+                    const _options = _mOptions[key] as Options;
+                    _tRoutes[_routekey][key] = {};
+                    if (_options.schema) {
+                      await writeCompiledSchema(
+                        _schemaFilePath,
+                        _options.schema as JSONSchema7
+                      );
+                      _tRoutes[_routekey][key].schema = true;
+                    }
+
+                    if (_options.type) {
+                      _tRoutes[_routekey][key].type = _options.type;
+                    }
+                  })
                 );
-                _routesTransformed[routeKey].schemas.push(key);
               })
             );
 
@@ -185,7 +205,7 @@ export const prepare: Hook = async (context: IContext) => {
 
             await writeFile(
               _routesOutputPath,
-              "exports.routes = " + JSON.stringify(_routesTransformed)
+              "exports.routes = " + JSON.stringify(_tRoutes)
             );
 
             /**
