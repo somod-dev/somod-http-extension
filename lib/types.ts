@@ -46,5 +46,5 @@ export type LambdaFunctionType<TBody = Record<any, unknown>> = (
   event: EventWithMiddlewareContext<Copy<CustomEventType<TBody>>>
 ) => Promise<string | Record<string, unknown> | void>;
 
-export const LAYERS_BASE_PATH = "/opt/routes/";
+export const LAYERS_BASE_PATH = "/opt/";
 export const MODULE_NAME = "somod-http-extension";

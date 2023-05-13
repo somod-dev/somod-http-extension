@@ -185,7 +185,7 @@ export const prepare: Hook = async (context: IContext) => {
 
             await writeFile(
               _routesOutputPath,
-              "export const routes = " + JSON.stringify(_routesTransformed)
+              "exports.routes = " + JSON.stringify(_routesTransformed)
             );
 
             /**
@@ -281,4 +281,4 @@ const parseFunctions = (template: JSONObjectType) => {
   return functions;
 };
 
-// export const functionMiddlewares = ["httpMiddleware1"];
+export const functionMiddlewares = ["httpMiddleware1"];
