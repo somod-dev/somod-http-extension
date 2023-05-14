@@ -15,6 +15,7 @@ export const schema: JSONSchema7 = {
             headers: {
               type: "object",
               minProperties: 1,
+              additionalProperties: false,
               properties: {
                 schema: { $ref: "http://json-schema.org/draft-07/schema" }
               }
@@ -22,6 +23,7 @@ export const schema: JSONSchema7 = {
             pathParameters: {
               type: "object",
               minProperties: 1,
+              additionalProperties: false,
               properties: {
                 schema: { $ref: "http://json-schema.org/draft-07/schema" }
               }
@@ -29,6 +31,7 @@ export const schema: JSONSchema7 = {
             queryStringParameters: {
               type: "object",
               minProperties: 1,
+              additionalProperties: false,
               properties: {
                 schema: { $ref: "http://json-schema.org/draft-07/schema" }
               }
@@ -36,8 +39,9 @@ export const schema: JSONSchema7 = {
             body: {
               type: "object",
               minProperties: 1,
+              additionalProperties: false,
               properties: {
-                type: { enum: ["string", "object"] },
+                parser: { enum: ["string", "object"] },
                 schema: { $ref: "http://json-schema.org/draft-07/schema" }
               }
             }

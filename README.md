@@ -6,39 +6,63 @@ This is an extension project written in accrodance with SOMOD [extensions](https
 
 > This documentation assumes users have prior knowledge of [SOMOD](https://docs.somod.dev/) and [JsonSchema7](https://json-schema.org/).
 
+**Install**
+
+```bash
+npm install somod-http-extension
+```
+
 ## **Extension**
 
-For each function written inside `serverless/functions/<function>.ts | .js` the extension looks for configuraion file named `<function>.html.yaml` in the same directory, and the actions are performed based on provided configuration value. All the dependent and current somod modules are scanned.
+For each function written inside `serverless/functions/<function>.ts | .js` the extension looks for configuraion file(optional) named `<function>.http.yaml` in the same directory. All the dependent and current somod modules are scanned.
 
-- `Routes configuratoin file`
+Each file `<function.ts>` can be configured to accept multiple routes. You can use library [HttpLambda](#httplambda) to map routes to functions.
+routes defined inside `<function>.http.yaml` should match `AWS::Serverless::Function`(Events property) [`template.yaml`](https://docs.somod.dev/reference/main-concepts/serverless/template.yaml).
+
+**`Routes configuratoin file`**
 
 ```yaml
 <path>:
   <method>:
-    <event key>?:
-      <key>?: <value>
+    headers?:
+      schema: <json schema>
+    pathParameters?:
+      schema: <json schema>
+    queryStringParameters?:
+      schema: <json schema>
+    body?:
+      schema: <json schema>
+      parse: "string" | "object"
 ```
 
-- `<route>` and `method`
+- example
 
-  used to validate the request at runtime.
+```yaml
+"/user/{userId}":
+  "GET":
+    headers:
+      schema: { type: "object" }
+    body:
+      parser: "object"
+      schema: { type: "object" }
+  "POST": {}
+```
 
-- `<event key>`
+`headers,pathParameters,queryStringParameters and body` are the keys of [aws event object](https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html#apigateway-example-event) only evnt version v2 is allowed.
 
-  refers to keys (can be nested) of [event object](https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html#apigateway-example-event) only evnt version v2 is allowed.
+- <path> and <method>
 
-- `<key>?: <value>`
-  allowed key value pairs are
+  Both are validated against the request received, if not matched 404 error will be thrown.
 
-  1. schema : JsonSchema7
+- <json schema>
 
-     used to validate value againt given schema
+  refer [josn schema](https://json-schema.org/)
 
-  2. type: string | object | integer
+- parser
 
-     used to parse the value
+  parser type to be used, default value is `object`. only `string` and `object` types are supported.
 
-     > this type is allowed only for event key `body`
+  > by defalut body type will be string in `aws event object`
 
 - `Hooks`
 
@@ -48,53 +72,24 @@ For each function written inside `serverless/functions/<function>.ts | .js` the 
 
   ### build
 
-  transform `<function>.http.yaml` file to `<function>.http.json` and put it inside build folder as shown above
+  transform `<function>.http.yaml` file to `<function>.http.json` and put it inside build folder.
 
   ### prepare
 
-  - get all the <function name>.http.json files from current and installed modules, compile all `<json-schema>` and create <route><http mehtod><type>.js file under `.somod` directory as shown above.
-  - create `routes.js` file under `.somod` directory as shown above. route.js file is similar to `<function name>.http.json` except `<json-schema>` is removed and a named export called `httpRoutes` is added.
-
-  ## examples
-
-  `myFunction.http.yaml`
-
-  ```yaml
-  "/user/login/{userid}":
-  "POST":
-    header:
-      schema:
-        {
-          $id: "https://example.com/bar.json",
-          $schema: "http://json-schema.org/draft-07/schema#",
-          type: "object",
-          properties: { content-type: { type: "string" } },
-          required: ["content-type"]
-        }
-    body:
-      type: "object"
-      schema:
-        {
-          $id: "https://example.com/bar.json",
-          $schema: "http://json-schema.org/draft-07/schema#",
-          type: "object",
-          properties: { body: { type: "string" } },
-          required: ["body"]
-        }
-  ```
+  - transform <function>.http.json file and precompile the given schemas for better runtime performance.
 
 ## **middleware**
 
-runtime validation fo configured routes and [event object](https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html#apigateway-example-event) keys against the given schema happens here.
+routes and schemas are validated against the request received. If not matched 404 error will be thrown. request body will be prased according to configuraiton.
 
-## **library**
+## **HttpLambda**
 
-this is just a library to attach multiple functions to routes inside single file(`<function.ts>`).
+this library maps functions to routes.
 
 create an object of `HttpLambda` and call `register` method to attach function to be called on specific route.
 
 ```typescript
-new HttpLambda().register(`<route>`, `<method>`, `<lambda fuction>`);
+new HttpLambda().register(`<path>`, `<method>`, `<lambda fuction>`);
 ```
 
 **example**
@@ -109,4 +104,7 @@ const loginFn = (event) => {
 };
 
 http.register("/user/login/{userid}", "POST",loginFn);
+
+export default http;
+
 ```

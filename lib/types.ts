@@ -31,7 +31,7 @@ export type KeyOptions = {
   body?: {
     //one of below is mandatory
     schema?: JSONSchema7;
-    parseType?: ParserType;
+    parser?: ParserType;
   };
 };
 

@@ -93,7 +93,7 @@ const validateParameters = async (
       let _obj = event[key] ? event[key] : null;
 
       if (key === BODY) {
-        _obj = parseBody(_obj as string, keyOptions[key]?.parseType);
+        _obj = parseBody(_obj as string, keyOptions[key]?.parser);
         console.log("parsed json");
       }
 
@@ -117,7 +117,7 @@ const parseBody = (obj: string, parseType?: ParserType) => {
   if (parseType == ParserType.string) {
     return obj;
   }
-  console.log("ParserType type not string - " + obj.toString());
+  console.log("ParserType type not string - " + obj);
   return JSON.parse(obj);
 };
 
