@@ -9,7 +9,7 @@ import {
   KeyOptions,
   LAYERS_BASE_PATH,
   RoutesTransformed,
-  ValueType
+  ParserType
 } from "../../../lib/types";
 import { encodeFileSystem } from "../../../lib/utils";
 
@@ -89,10 +89,12 @@ const validateParameters = async (
       let validate = await import(path);
       console.log("import passed");
       console.log(validate);
-      let _obj = getEventPropertyByKey(event, key);
+      // let _obj = getEventPropertyByKey(event, key);
+      let _obj = event[key] ? event[key] : null;
 
       if (key === BODY) {
-        _obj = parseBody(_obj as string, key, keyOptions[key].type);
+        _obj = parseBody(_obj as string, keyOptions[key]?.parseType);
+        console.log("parsed json");
       }
 
       console.log(_obj);
@@ -110,31 +112,13 @@ const validateParameters = async (
   );
 };
 
-const parseBody = (obj: string, key: string, type?: string) => {
-  if (type === ValueType.object) {
-    obj = JSON.parse(obj);
-  } else if (type === ValueType.integer) {
-    obj = parseInt(obj) as unknown as string;
+const parseBody = (obj: string, parseType?: ParserType) => {
+  console.log("inside parser");
+  if (parseType == ParserType.string) {
+    return obj;
   }
-  return obj;
-};
-
-const getEventPropertyByKey = (
-  event: EventWithMiddlewareContext<Copy<EventType>>,
-  key: string
-): unknown => {
-  /**
-   * check if this should be deep copy, because event is readonly
-   */
-  let _event = event;
-  try {
-    key.split(".").forEach(_key => {
-      _event = _event[_key];
-    });
-  } catch (error) {
-    throw new Error(`given key - ${key} not found in event object `);
-  }
-  return _event;
+  console.log("ParserType type not string - " + obj.toString());
+  return JSON.parse(obj);
 };
 
 export default myMiddleware;

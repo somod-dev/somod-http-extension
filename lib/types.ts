@@ -18,7 +18,22 @@ export type RoutesTransformed = Record<string, KeyOptions>;
 
 export type HttpMethodOptions = Record<HttpMethod, KeyOptions>;
 
-export type KeyOptions = Record<string, Options>;
+export type KeyOptions = {
+  headers?: {
+    schema: JSONSchema7;
+  };
+  pathParameters?: {
+    schema: JSONSchema7;
+  };
+  queryStringParameters?: {
+    schema: JSONSchema7;
+  };
+  body?: {
+    //one of below is mandatory
+    schema?: JSONSchema7;
+    parseType?: ParserType;
+  };
+};
 
 export enum HttpMethod {
   "GET" = "GET",
@@ -30,15 +45,14 @@ export enum HttpMethod {
 
 export const BODY = "body";
 
-export type Options = {
-  schema?: JSONSchema7 | boolean;
-  type?: ValueType;
-};
+// export type Options = {
+//   schema?: JSONSchema7 | boolean;
+//   type?: ParserType;
+// };
 
-export enum ValueType {
+export enum ParserType {
   "string" = "string",
-  "object" = "object",
-  "integer" = "integer"
+  "object" = "object"
 }
 
 export enum ParameterTypes {
@@ -47,8 +61,6 @@ export enum ParameterTypes {
   "pathParameters" = "pathParameters",
   "queryStringParameters" = "queryStringParameters"
 }
-
-export type ParserType = Record<string, (event: EventType) => unknown>;
 
 export type HttpResponse = {
   statusCode: number;

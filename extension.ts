@@ -18,7 +18,6 @@ import { Extension, IContext, Module } from "somod";
 import {
   HttpMethodOptions,
   KeyOptions,
-  Options,
   Routes,
   RoutesTransformed
 } from "./lib/types";
@@ -173,28 +172,28 @@ export const prepare: Hook = async (context: IContext) => {
 
             await Promise.all(
               Object.keys(_rOptions).map(async method => {
-                const _schemaFileName = encodeFileSystem(route, method);
-                const _schemaFilePath = path.join(_schemaDir, _schemaFileName);
-                await mkdir(_schemaDir, { recursive: true });
-                const _mOptions = _rOptions[method] as KeyOptions;
-
                 const _routekey = `${method} ${route}`;
                 _tRoutes[_routekey] = {};
 
+                await mkdir(_schemaDir, { recursive: true });
+                const _mOptions = _rOptions[method] as KeyOptions;
+
                 await Promise.all(
                   Object.keys(_mOptions).map(async key => {
-                    const _options = _mOptions[key] as Options;
+                    const _options = _mOptions[key];
                     _tRoutes[_routekey][key] = {};
                     if (_options.schema) {
+                      const _sFileName = encodeFileSystem(_routekey, key);
+                      const _sFilePath = path.join(_schemaDir, _sFileName);
                       await writeCompiledSchema(
-                        _schemaFilePath,
+                        _sFilePath,
                         _options.schema as JSONSchema7
                       );
                       _tRoutes[_routekey][key].schema = true;
                     }
 
-                    if (_options.type) {
-                      _tRoutes[_routekey][key].type = _options.type;
+                    if (_options.parser) {
+                      _tRoutes[_routekey][key].parser = _options.parser;
                     }
                   })
                 );

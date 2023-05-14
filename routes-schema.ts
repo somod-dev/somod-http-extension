@@ -10,16 +10,35 @@ export const schema: JSONSchema7 = {
       patternProperties: {
         "^(GET|POST|PUT|DELETE|HEAD)$": {
           additionalProperties: false,
-          patternProperties: {
-            ".": {
+          type: "object",
+          properties: {
+            headers: {
               type: "object",
               minProperties: 1,
-              additionalProperties: false,
               properties: {
-                schema: {
-                  $ref: "http://json-schema.org/draft-07/schema"
-                },
-                type: { enum: ["string", "object", "integer"] }
+                schema: { $ref: "http://json-schema.org/draft-07/schema" }
+              }
+            },
+            pathParameters: {
+              type: "object",
+              minProperties: 1,
+              properties: {
+                schema: { $ref: "http://json-schema.org/draft-07/schema" }
+              }
+            },
+            queryStringParameters: {
+              type: "object",
+              minProperties: 1,
+              properties: {
+                schema: { $ref: "http://json-schema.org/draft-07/schema" }
+              }
+            },
+            body: {
+              type: "object",
+              minProperties: 1,
+              properties: {
+                type: { enum: ["string", "object"] },
+                schema: { $ref: "http://json-schema.org/draft-07/schema" }
               }
             }
           }
