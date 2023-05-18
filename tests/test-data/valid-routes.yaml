@@ -1,7 +1,7 @@
 "/user/{userId}":
   "GET":
     body:
-      type: "object"
+      parser: "string"
       schema:
         {
           $id: "https://example.com/body.json",

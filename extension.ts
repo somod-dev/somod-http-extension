@@ -4,9 +4,10 @@ import {
   getCompiledValidator,
   validate
 } from "decorated-ajv";
-import fs from "node:fs";
-import { mkdir, readdir, writeFile } from "node:fs/promises";
-import path from "node:path";
+
+import { mkdir, readdir, writeFile } from "fs/promises";
+import { existsSync } from "fs";
+import { join } from "path";
 import {
   readJsonFileStore,
   readYamlFileStore,
@@ -26,8 +27,8 @@ import { schema } from "./routes-schema";
 
 type Hook = Extension["prebuild"];
 
-const SERVERLESS = "serverless";
-const FUNCTIONS = "functions";
+export const SERVERLESS = "serverless";
+export const FUNCTIONS = "functions";
 
 const DOT_TS = ".ts";
 const DOT_JS = ".js";
@@ -50,7 +51,7 @@ export const prebuild: Hook = async (context: IContext) => {
     context.moduleHandler.roodModuleName
   );
 
-  const _functionsDir = path.join(
+  const _functionsDir = join(
     rootModule.module.packageLocation,
     SERVERLESS,
     FUNCTIONS
@@ -58,7 +59,7 @@ export const prebuild: Hook = async (context: IContext) => {
   const _rFileNames = await getRouteFileNames(_functionsDir, DOT_TS, HTTP_YAML);
 
   for (const _rFile of _rFileNames) {
-    const routeFilePath = path.join(_functionsDir, _rFile + HTTP_YAML);
+    const routeFilePath = join(_functionsDir, _rFile + HTTP_YAML);
 
     const routes = await readYamlFileStore(routeFilePath);
     const violations: Violation[] = await validate(schema, routes);
@@ -73,7 +74,7 @@ export const build: Hook = async (context: IContext) => {
     context.moduleHandler.roodModuleName
   );
 
-  const _functionsDir = path.join(
+  const _functionsDir = join(
     rootModule.module.packageLocation,
     SERVERLESS,
     FUNCTIONS
@@ -82,8 +83,8 @@ export const build: Hook = async (context: IContext) => {
   const _rFileNames = await getRouteFileNames(_functionsDir, DOT_TS, HTTP_YAML);
 
   for (const _rFileName of _rFileNames) {
-    const routePath = path.join(_functionsDir, _rFileName + HTTP_YAML);
-    const routeJsonPath = path.join(_functionsDir, _rFileName + HTTP_JSON);
+    const routePath = join(_functionsDir, _rFileName + HTTP_YAML);
+    const routeJsonPath = join(_functionsDir, _rFileName + HTTP_JSON);
     const routes = await readYamlFileStore(routePath);
 
     await writeFile(routeJsonPath, JSON.stringify(routes));
@@ -101,7 +102,7 @@ export const prepare: Hook = async (context: IContext) => {
     context.moduleHandler.roodModuleName
   );
 
-  const templateFile = path.join(root.module.packageLocation, TEMPLATE_YAML);
+  const templateFile = join(root.module.packageLocation, TEMPLATE_YAML);
   const template: JSONObjectType = await readYamlFileStore(templateFile);
   if (!template) {
     return;
@@ -120,7 +121,7 @@ export const prepare: Hook = async (context: IContext) => {
 
       const module = context.moduleHandler.getModule(moduleName);
 
-      const _functionsDir = path.join(
+      const _functionsDir = join(
         module.module.packageLocation,
         BUILD,
         SERVERLESS,
@@ -134,10 +135,7 @@ export const prepare: Hook = async (context: IContext) => {
       );
 
       for (const __routeFileName of __routeFileNames) {
-        const _routeFilePath = path.join(
-          _functionsDir,
-          __routeFileName + HTTP_JSON
-        );
+        const _routeFilePath = join(_functionsDir, __routeFileName + HTTP_JSON);
 
         const _tRoutes = {} as RoutesTransformed;
         const routes = (await readJsonFileStore(_routeFilePath)) as Routes;
@@ -145,7 +143,7 @@ export const prepare: Hook = async (context: IContext) => {
           Object.keys(routes).map(async route => {
             const _rOptions = routes[route] as HttpMethodOptions;
 
-            const _layerBaseDir = path.join(
+            const _layerBaseDir = join(
               root.module.packageLocation,
               SOMOD,
               SERVERLESS,
@@ -153,7 +151,7 @@ export const prepare: Hook = async (context: IContext) => {
               moduleName,
               SOMOD_HTTP_EXTENSION + "-" + __routeFileName
             );
-            const _layerDir = path.join(_layerBaseDir, SOMOD_HTTP_EXTENSION);
+            const _layerDir = join(_layerBaseDir, SOMOD_HTTP_EXTENSION);
 
             await Promise.all(
               Object.keys(_rOptions).map(async method => {
@@ -169,7 +167,7 @@ export const prepare: Hook = async (context: IContext) => {
                     _tRoutes[_routekey][key] = {};
                     if (_options.schema) {
                       const _sFileName = encodeFileName(_routekey, key);
-                      const _sFilePath = path.join(_layerDir, _sFileName);
+                      const _sFilePath = join(_layerDir, _sFileName);
                       await writeCompiledSchema(
                         _sFilePath,
                         _options.schema as JSONSchema7
@@ -185,7 +183,7 @@ export const prepare: Hook = async (context: IContext) => {
               })
             );
 
-            const _routesOutputPath = path.join(_layerDir, ROUTE_FILE_NAME);
+            const _routesOutputPath = join(_layerDir, ROUTE_FILE_NAME);
 
             await writeFile(
               _routesOutputPath,
@@ -230,7 +228,7 @@ const getRouteFileNames = async (
   extensionTwo: string
 ): Promise<string[]> => {
   let routes: string[] = [];
-  if (!fs.existsSync(path)) {
+  if (!existsSync(path)) {
     return routes;
   }
 
