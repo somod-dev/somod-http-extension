@@ -1,34 +1,26 @@
 import { EventWithMiddlewareContext } from "somod";
-import {
-  Copy,
-  CustomEventType,
-  HttpResponse,
-  LambdaFunctionType
-} from "./types";
+import { Copy, EventType, HttpResponse, RouteHandlerType } from "./types";
 
 export class HttpLambda {
-  private apis: Record<string, LambdaFunctionType> = {};
+  private apis: Record<string, RouteHandlerType> = {};
 
-  register = <TBody = Record<string, unknown>>(
-    routeKey: string,
-    lambdaFn: LambdaFunctionType<TBody>
-  ) => {
-    /**
-     * as LambdaFunctionType is just hack to get types mapped properly
-     */
-    this.apis[routeKey] = lambdaFn as LambdaFunctionType;
+  add = (route: string, method: string, routeHandler: RouteHandlerType) => {
+    this.apis[`${method} ${route}`] = routeHandler;
   };
 
   getHandler = () => {
     return async (
-      event: EventWithMiddlewareContext<Copy<CustomEventType>>
+      event: EventWithMiddlewareContext<Copy<EventType>>
     ): Promise<HttpResponse> => {
-      const lambdaFn = this.apis[event.routeKey.toLocaleLowerCase()];
-      if (lambdaFn == undefined) {
-        throw new Error("404, url dose not exists");
+      const routeHandler = this.apis[event.routeKey.toLocaleLowerCase()];
+      if (routeHandler == undefined) {
+        return {
+          statusCode: 200,
+          body: "404, url dose not exists"
+        };
       }
 
-      const result = await lambdaFn(event);
+      const result = await routeHandler(event);
       return this.lambdaResponseHandler(result);
     };
   };

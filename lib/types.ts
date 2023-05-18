@@ -71,9 +71,14 @@ export type HttpResponse = {
 export type DefaultAdditionalParametersType = Record<string, unknown>;
 export type DefaultBodyType = Record<string, unknown>;
 
-export type LambdaFunctionType<TBody = Record<any, unknown>> = (
-  event: EventWithMiddlewareContext<Copy<CustomEventType<TBody>>>
+export type RouteHandlerType = (
+  event: EventWithMiddlewareContext<Copy<EventType>>
 ) => Promise<string | Record<string, unknown> | void>;
 
-export const LAYERS_BASE_PATH = "/opt/";
-export const MODULE_NAME = "somod-http-extension";
+export type AwsServerlessFunctionType = {
+  Type: string;
+  Properties: {
+    CodeUri: string;
+    Layers: Record<string, string>[];
+  };
+};

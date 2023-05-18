@@ -2,13 +2,14 @@ import { JSONSchema7 } from "json-schema";
 
 export const schema: JSONSchema7 = {
   type: "object",
+  additionalProperties: false,
   patternProperties: {
-    "^[ A-Za-z0-9_@./#&+-]*$": {
+    "^.*$": {
       type: "object",
       minProperties: 1,
       additionalProperties: false,
       patternProperties: {
-        "^(GET|POST|PUT|DELETE|HEAD)$": {
+        "^(GET|HEAD|POST|PUT|DELETE|CONNECT|OPTIONS|TRACE|PATCH)$": {
           additionalProperties: false,
           type: "object",
           properties: {

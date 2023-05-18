@@ -18,6 +18,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/aws-lambda": "^8.10.115",
+    "@types/jest": "^29.5.1",
     "@types/react": "^18.0.38",
     "aws-sdk": "^2.1363.0",
     "eslint-config-next": "^13.3.1",
@@ -38,11 +39,11 @@
   "somod": "1.17.0",
   "dependencies": {
     "@types/ajv": "^1.0.0",
-    "@types/js-yaml": "^4.0.5",
     "ajv": "^8.12.0",
     "decorated-ajv": "^1.1.0",
-    "js-yaml": "^4.1.0",
-    "nodejs-file-utils": "^1.0.2"
+    "jest": "^29.5.0",
+    "nodejs-file-utils": "^1.0.2",
+    "ts-jest": "^29.1.0"
   },
   "eslintConfig": {
     "extends": [

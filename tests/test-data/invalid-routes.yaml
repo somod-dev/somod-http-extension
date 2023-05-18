@@ -1,0 +1,5 @@
+"/user/{userId}":
+  "GETPOST":
+    bodyHeader:
+      type: "object"
+      schema:
