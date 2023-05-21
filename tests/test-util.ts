@@ -7,10 +7,11 @@ import {
   Module,
   ModuleNode
 } from "somod";
+import { ROOT_MODULE_NAME } from "./extension-prepare.test";
 
 export const getTestRootModule = (path: string) => {
   const rootModule: Module = {
-    name: "root-module",
+    name: ROOT_MODULE_NAME,
     version: "1.0.0",
     packageLocation: path,
     root: true
@@ -36,7 +37,10 @@ export const getTestModuleNode = (module: Module) => {
   };
 };
 
-export const getTestContext = (moduleHandler: IModuleHandler): IContext => {
+export const getTestContext = (
+  moduleHandler: IModuleHandler,
+  sth?: IServerlessTemplateHandler
+): IContext => {
   return {
     dir: process.cwd(),
     moduleHandler: moduleHandler,
@@ -48,6 +52,6 @@ export const getTestContext = (moduleHandler: IModuleHandler): IContext => {
     isServerless: true,
     isUI: false,
     namespaceHandler: {} as INamespaceHandler,
-    serverlessTemplateHandler: {} as IServerlessTemplateHandler
+    serverlessTemplateHandler: sth ?? ({} as IServerlessTemplateHandler)
   };
 };

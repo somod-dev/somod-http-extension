@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: ${sq}2010-09-09${sq}
 Transform: AWS::Serverless-2016-10-31
 Globals:
   Function:
@@ -12,7 +12,7 @@ Resources:
     Properties:
       CorsConfiguration:
         AllowOrigins:
-          - "*"
+          - ${sq}*${sq}
   FuncitonA:
     Type: AWS::Serverless::Function
     Properties:
@@ -27,6 +27,7 @@ Resources:
               Ref: r98a6ba03HttpApiGateway
       Layers:
         - Ref: sampleLayer
+        - Ref: somod-http-extensionfnA
   FuncitonB:
     Type: AWS::Serverless::Function
     Properties:
@@ -41,8 +42,19 @@ Resources:
               Ref: r98a6ba03HttpApiGateway
       Layers:
         - Ref: sampleLayer
+        - Ref: somod-http-extensionfnB
   sampleLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
       ContentUri: >-
         /home/lohith/tech/github/loki-samples/sample-extension-test/somod-http-extension-test/.somod/serverless/functionLayers/somod-http-extension-test/myFunction
+  somod-http-extensionfnB:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: >-
+        ${dirPath}/.somod/serverless/functionLayers/@test/moduleB/somod-http-extension-fnB
+  somod-http-extensionfnA:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: >-
+        ${dirPath}/.somod/serverless/functionLayers/moduleA/somod-http-extension-fnA

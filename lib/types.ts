@@ -83,7 +83,7 @@ export type AwsServerlessFunctionType = {
   };
 };
 
-export type FunctionModuleNames = {
+export type Names = {
   functionName: string;
   moduleName: string;
 };

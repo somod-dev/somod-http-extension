@@ -1,0 +1,18 @@
+{
+  "/user/{userId}": {
+    "GET": {
+      "body": {
+        "parser": "string",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "body": {
+              "type": "string"
+            }
+          },
+          "required": ["body"]
+        }
+      }
+    }
+  }
+}

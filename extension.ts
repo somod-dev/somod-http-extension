@@ -18,7 +18,7 @@ import { join } from "path";
 import { Extension, IContext } from "somod";
 import {
   AwsServerlessFunctionType,
-  FunctionModuleNames,
+  Names,
   Routes,
   RoutesTransformed
 } from "./lib/types";
@@ -30,21 +30,20 @@ type Hook = Extension["prebuild"];
 export const SERVERLESS = "serverless";
 export const FUNCTIONS = "functions";
 export const BUILD = "build";
+export const HTTP_JSON = ".http.json";
+export const SOMOD = ".somod";
+export const FUNCTION_LAYERS = "functionLayers";
+export const ROUTE_FILE_NAME = "routes.js";
+export const SOMOD_HTTP_EXTENSION = "somod-http-extension";
+export const TEMPLATE_YAML = "template.yaml";
 
 const DOT_TS = ".ts";
 const HTTP_YAML = ".http.yaml";
-const HTTP_JSON = ".http.json";
-
-export const TEMPLATE_YAML = "template.yaml";
 declare type JSONObjectType = Record<string, unknown>;
 const RESOURCES = "Resources";
 const AWS_SERVERLESS_FUNCTION = "AWS::Serverless::Function";
 const AWS_SERVERLESS_LAYER_VERSION = "AWS::Serverless::LayerVersion";
 const TYPE = "Type";
-const SOMOD = ".somod";
-const FUNCTION_LAYERS = "functionLayers";
-const ROUTE_FILE_NAME = "routes.js";
-const SOMOD_HTTP_EXTENSION = "somod-http-extension";
 
 export const prebuild: Hook = async (context: IContext) => {
   const rootModule = context.moduleHandler.getModule(
@@ -139,7 +138,7 @@ export const prepare: Hook = async (context: IContext) => {
   await Promise.all(
     functions.map(async (func: AwsServerlessFunctionType) => {
       const codeUri = func.Properties.CodeUri;
-      const _names: FunctionModuleNames = getModuleNameFromCodeUri(codeUri);
+      const _names: Names = getModuleNameFromCodeUri(codeUri);
       const module = context.moduleHandler.getModule(_names.moduleName);
 
       const _functionsDir = join(
@@ -154,6 +153,9 @@ export const prepare: Hook = async (context: IContext) => {
         _names.functionName + HTTP_JSON
       );
 
+      /**
+       * TODO: if created by system it should exists, check with Raaghu
+       */
       if (!existsSync(_routeFilePath)) {
         return;
       }
@@ -271,15 +273,10 @@ const getRouteFileNames = async (
   return routes;
 };
 
-const getModuleNameFromCodeUri = (codeUri: string): FunctionModuleNames => {
+const getModuleNameFromCodeUri = (codeUri: string): Names => {
   const _cUriPaths = codeUri.split("/");
-
-  if (_cUriPaths.length < 2) {
-    return {} as FunctionModuleNames;
-  }
   const functionName = _cUriPaths.pop() ?? "";
-  let moduleName = "";
-  moduleName = _cUriPaths.pop() ?? "";
+  let moduleName = _cUriPaths.pop() ?? "";
   const scopeName = _cUriPaths.pop();
   if (scopeName?.startsWith("@")) {
     moduleName = scopeName + "/" + moduleName;
