@@ -82,3 +82,8 @@ export type AwsServerlessFunctionType = {
     Layers: Record<string, string>[];
   };
 };
+
+export type FunctionModuleNames = {
+  functionName: string;
+  moduleName: string;
+};

@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: nodejs16.x
+    Handler: index.default
+    Architectures:
+      - arm64
+Resources:
+  r98a6ba03HttpApiGateway:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"

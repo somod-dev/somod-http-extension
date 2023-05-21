@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: nodejs16.x
+    Handler: index.default
+    Architectures:
+      - arm64
+Resources:
+  r98a6ba03HttpApiGateway:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+  SampleFunciton1:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .somod/serverless/functions/module-a/myFunction
+      Events:
+        HttpApiEvent:
+          Type: HttpApi
+          Properties:
+            Path: /user/{userId}
+            Method: GET
+            ApiId:
+              Ref: r98a6ba03HttpApiGateway
+      Layers:
+        - Ref: myLayer759
+  SampleFunciton2:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .somod/serverless/functions/@test/module-a/myFunction
+      Events:
+        HttpApiEvent:
+          Type: HttpApi
+          Properties:
+            Path: /user/{userId}
+            Method: GET
+            ApiId:
+              Ref: r98a6ba03HttpApiGateway
+      Layers:
+        - Ref: myLayer759
+
+  sampleLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: >-
+        /home/lohith/tech/github/loki-samples/sample-extension-test/somod-http-extension-test/.somod/serverless/functionLayers/somod-http-extension-test/myFunction

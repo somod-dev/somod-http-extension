@@ -1,5 +1,6 @@
 "/user/{userId}":
-  "GETPOST":
-    bodyHeader:
-      type: "object"
-      schema:
+  "GET":
+    invalid: "i am not valid"
+    body:
+      parser: "string"
+      schema: "should be an object not string"

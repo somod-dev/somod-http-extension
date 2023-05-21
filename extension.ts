@@ -1,24 +1,24 @@
 import {
   JSONSchema7,
   Violation,
+  getAjv,
   getCompiledValidator,
   validate
 } from "decorated-ajv";
 
-import { mkdir, readdir, writeFile } from "fs/promises";
 import { existsSync } from "fs";
-import { join } from "path";
+import { mkdir, readdir, writeFile } from "fs/promises";
 import {
   readJsonFileStore,
   readYamlFileStore,
   saveYamlFileStore,
   updateYamlFileStore
 } from "nodejs-file-utils";
+import { join } from "path";
 import { Extension, IContext } from "somod";
 import {
   AwsServerlessFunctionType,
-  HttpMethodOptions,
-  KeyOptions,
+  FunctionModuleNames,
   Routes,
   RoutesTransformed
 } from "./lib/types";
@@ -29,13 +29,13 @@ type Hook = Extension["prebuild"];
 
 export const SERVERLESS = "serverless";
 export const FUNCTIONS = "functions";
+export const BUILD = "build";
 
 const DOT_TS = ".ts";
-const DOT_JS = ".js";
 const HTTP_YAML = ".http.yaml";
 const HTTP_JSON = ".http.json";
-const BUILD = "build";
-const TEMPLATE_YAML = "template.yaml";
+
+export const TEMPLATE_YAML = "template.yaml";
 declare type JSONObjectType = Record<string, unknown>;
 const RESOURCES = "Resources";
 const AWS_SERVERLESS_FUNCTION = "AWS::Serverless::Function";
@@ -58,13 +58,33 @@ export const prebuild: Hook = async (context: IContext) => {
   );
   const _rFileNames = await getRouteFileNames(_functionsDir, DOT_TS, HTTP_YAML);
 
+  const ajv = getAjv();
   for (const _rFile of _rFileNames) {
-    const routeFilePath = join(_functionsDir, _rFile + HTTP_YAML);
+    const _routeFilePath = join(_functionsDir, _rFile + HTTP_YAML);
 
-    const routes = await readYamlFileStore(routeFilePath);
+    const routes = (await readYamlFileStore(_routeFilePath)) as Routes;
     const violations: Violation[] = await validate(schema, routes);
     if (violations.length > 0) {
-      throw new Error(violations.map(v => v.message).join("\n"));
+      throw new Error(
+        violations.map(v => v.path + " : " + v.message).join("\n")
+      );
+    }
+
+    for (const route of Object.keys(routes)) {
+      for (const method of Object.keys(routes[route])) {
+        for (const key of Object.keys(routes[route][method])) {
+          if (routes[route][method][key].schema) {
+            await ajv.validateSchema(routes[route][method][key].schema);
+            if (ajv.errors) {
+              throw new Error(
+                ajv.errors
+                  .map(e => e.propertyName + " : " + e.message)
+                  .join("\n")
+              );
+            }
+          }
+        }
+      }
     }
   }
 };
@@ -80,11 +100,18 @@ export const build: Hook = async (context: IContext) => {
     FUNCTIONS
   );
 
+  const _buildSchemaDir = join(
+    rootModule.module.packageLocation,
+    BUILD,
+    SERVERLESS,
+    FUNCTIONS
+  );
+
   const _rFileNames = await getRouteFileNames(_functionsDir, DOT_TS, HTTP_YAML);
 
   for (const _rFileName of _rFileNames) {
     const routePath = join(_functionsDir, _rFileName + HTTP_YAML);
-    const routeJsonPath = join(_functionsDir, _rFileName + HTTP_JSON);
+    const routeJsonPath = join(_buildSchemaDir, _rFileName + HTTP_JSON);
     const routes = await readYamlFileStore(routePath);
 
     await writeFile(routeJsonPath, JSON.stringify(routes));
@@ -103,23 +130,17 @@ export const prepare: Hook = async (context: IContext) => {
   );
 
   const templateFile = join(root.module.packageLocation, TEMPLATE_YAML);
-  const template: JSONObjectType = await readYamlFileStore(templateFile);
-  if (!template) {
+  if (!existsSync(templateFile)) {
     return;
   }
-
+  const template: JSONObjectType = await readYamlFileStore(templateFile);
   const functions = parseFunctions(template) as AwsServerlessFunctionType[];
 
-  /***
-   * TODO: create a folder with module name[or funciton name] and then move the code there
-   */
   await Promise.all(
     functions.map(async (func: AwsServerlessFunctionType) => {
       const codeUri = func.Properties.CodeUri;
-
-      const moduleName = getModuleNameFromCodeUri(codeUri);
-
-      const module = context.moduleHandler.getModule(moduleName);
+      const _names: FunctionModuleNames = getModuleNameFromCodeUri(codeUri);
+      const module = context.moduleHandler.getModule(_names.moduleName);
 
       const _functionsDir = join(
         module.module.packageLocation,
@@ -128,88 +149,83 @@ export const prepare: Hook = async (context: IContext) => {
         FUNCTIONS
       );
 
-      const __routeFileNames = await getRouteFileNames(
+      const _routeFilePath = join(
         _functionsDir,
-        DOT_JS,
-        HTTP_JSON
+        _names.functionName + HTTP_JSON
       );
 
-      for (const __routeFileName of __routeFileNames) {
-        const _routeFilePath = join(_functionsDir, __routeFileName + HTTP_JSON);
-
-        const _tRoutes = {} as RoutesTransformed;
-        const routes = (await readJsonFileStore(_routeFilePath)) as Routes;
-        await Promise.all(
-          Object.keys(routes).map(async route => {
-            const _rOptions = routes[route] as HttpMethodOptions;
-
-            const _layerBaseDir = join(
-              root.module.packageLocation,
-              SOMOD,
-              SERVERLESS,
-              FUNCTION_LAYERS,
-              moduleName,
-              SOMOD_HTTP_EXTENSION + "-" + __routeFileName
-            );
-            const _layerDir = join(_layerBaseDir, SOMOD_HTTP_EXTENSION);
-
-            await Promise.all(
-              Object.keys(_rOptions).map(async method => {
-                const _routekey = `${method} ${route}`;
-                _tRoutes[_routekey] = {};
-
-                await mkdir(_layerDir, { recursive: true });
-                const _kOptions = _rOptions[method] as KeyOptions;
-
-                await Promise.all(
-                  Object.keys(_kOptions).map(async key => {
-                    const _options = _kOptions[key];
-                    _tRoutes[_routekey][key] = {};
-                    if (_options.schema) {
-                      const _sFileName = encodeFileName(_routekey, key);
-                      const _sFilePath = join(_layerDir, _sFileName);
-                      await writeCompiledSchema(
-                        _sFilePath,
-                        _options.schema as JSONSchema7
-                      );
-                      _tRoutes[_routekey][key].schema = true;
-                    }
-
-                    if (_options.parser) {
-                      _tRoutes[_routekey][key].parser = _options.parser;
-                    }
-                  })
-                );
-              })
-            );
-
-            const _routesOutputPath = join(_layerDir, ROUTE_FILE_NAME);
-
-            await writeFile(
-              _routesOutputPath,
-              "exports.routes = " + JSON.stringify(_tRoutes)
-            );
-
-            const layerResourceName =
-              context.serverlessTemplateHandler.getSAMResourceLogicalId(
-                SOMOD_HTTP_EXTENSION,
-                context.getModuleHash(moduleName + __routeFileName) +
-                  __routeFileName
-              );
-            const layer = {
-              Type: AWS_SERVERLESS_LAYER_VERSION,
-              Properties: {
-                ContentUri: _layerBaseDir
-              }
-            };
-
-            func.Properties.Layers.push({ Ref: layerResourceName });
-
-            (template["Resources"] as JSONObjectType)[layerResourceName] =
-              layer;
-          })
-        );
+      if (!existsSync(_routeFilePath)) {
+        return;
       }
+
+      const _tRoutes = {} as RoutesTransformed;
+      const routes = (await readJsonFileStore(_routeFilePath)) as Routes;
+      await Promise.all(
+        Object.keys(routes).map(async route => {
+          const _layerBaseDir = join(
+            root.module.packageLocation,
+            SOMOD,
+            SERVERLESS,
+            FUNCTION_LAYERS,
+            _names.moduleName,
+            SOMOD_HTTP_EXTENSION + "-" + _names.functionName
+          );
+          const _layerDir = join(_layerBaseDir, SOMOD_HTTP_EXTENSION);
+
+          await Promise.all(
+            Object.keys(routes[route]).map(async method => {
+              const _routekey = `${method} ${route}`;
+              _tRoutes[_routekey] = {};
+
+              await mkdir(_layerDir, { recursive: true });
+
+              await Promise.all(
+                Object.keys(routes[route][method]).map(async key => {
+                  const _options = routes[route][method][key];
+                  _tRoutes[_routekey][key] = {};
+                  if (_options.schema) {
+                    const _sFileName = encodeFileName(_routekey, key);
+                    const _sFilePath = join(_layerDir, _sFileName);
+                    await writeCompiledSchema(
+                      _sFilePath,
+                      _options.schema as JSONSchema7
+                    );
+                    _tRoutes[_routekey][key].schema = true;
+                  }
+
+                  if (_options.parser) {
+                    _tRoutes[_routekey][key].parser = _options.parser;
+                  }
+                })
+              );
+            })
+          );
+
+          const _routesOutputPath = join(_layerDir, ROUTE_FILE_NAME);
+
+          await writeFile(
+            _routesOutputPath,
+            "exports.routes = " + JSON.stringify(_tRoutes)
+          );
+
+          const layerResourceName =
+            context.serverlessTemplateHandler.getSAMResourceLogicalId(
+              SOMOD_HTTP_EXTENSION,
+              context.getModuleHash(_names.moduleName + _names.functionName) +
+                _names.functionName
+            );
+          const layer = {
+            Type: AWS_SERVERLESS_LAYER_VERSION,
+            Properties: {
+              ContentUri: _layerBaseDir
+            }
+          };
+
+          func.Properties.Layers.push({ Ref: layerResourceName });
+
+          (template["Resources"] as JSONObjectType)[layerResourceName] = layer;
+        })
+      );
     })
   );
   updateYamlFileStore(templateFile, template);
@@ -255,18 +271,20 @@ const getRouteFileNames = async (
   return routes;
 };
 
-const getModuleNameFromCodeUri = (codeUri: string): string => {
+const getModuleNameFromCodeUri = (codeUri: string): FunctionModuleNames => {
   const _cUriPaths = codeUri.split("/");
-  let moduleName = "";
-  if (_cUriPaths.length > 2) {
-    _cUriPaths.pop();
-    moduleName = _cUriPaths.pop() ?? "";
-    const scopeName = _cUriPaths.pop();
-    if (scopeName?.startsWith("@")) {
-      moduleName = scopeName + "/" + moduleName;
-    }
+
+  if (_cUriPaths.length < 2) {
+    return {} as FunctionModuleNames;
   }
-  return moduleName;
+  const functionName = _cUriPaths.pop() ?? "";
+  let moduleName = "";
+  moduleName = _cUriPaths.pop() ?? "";
+  const scopeName = _cUriPaths.pop();
+  if (scopeName?.startsWith("@")) {
+    moduleName = scopeName + "/" + moduleName;
+  }
+  return { functionName: functionName, moduleName: moduleName };
 };
 
 const parseFunctions = (template: JSONObjectType) => {
@@ -281,4 +299,4 @@ const parseFunctions = (template: JSONObjectType) => {
   return functions;
 };
 
-export const functionMiddlewares = ["httpMiddleware1"];
+export const functionMiddlewares = ["somod-http-middleware"];
