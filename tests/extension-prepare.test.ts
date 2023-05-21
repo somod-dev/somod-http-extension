@@ -1,7 +1,11 @@
-/* eslint-disable no-console */
 import { mkdir, readFile } from "fs/promises";
 import { existsSync } from "fs";
-import { createFiles, createTempDir } from "nodejs-file-utils";
+import {
+  createFiles,
+  createTempDir,
+  deleteDir,
+  readYamlFileStore
+} from "nodejs-file-utils";
 import { join } from "path";
 import {
   IContext,
@@ -31,15 +35,34 @@ const TESTS = "tests";
 const TEST_DATA = "test-data";
 export const ROOT_MODULE_NAME = "root-module";
 
+type TemplateDummyType = {
+  Resources: {
+    sampleLayer: unknown;
+    FuncitonA: unknown;
+    FuncitonB: unknown;
+    "somod-http-extensionfnB": {
+      Type: unknown;
+      Properties: {
+        ContentUri: string;
+      };
+    };
+    "somod-http-extensionfnA": {
+      Type: unknown;
+      Properties: {
+        ContentUri: string;
+      };
+    };
+  };
+};
+
 describe("Test Hooks - build and prebuild", () => {
   let dir = "";
   const cwd = process.cwd();
   beforeEach(() => {
     dir = createTempDir("somod-http-extension-test");
-    console.log(dir);
   });
   afterEach(() => {
-    // deleteDir(dir);
+    deleteDir(dir);
   });
 
   test("prepare no template yaml file", async () => {
@@ -94,7 +117,7 @@ describe("Test Hooks - build and prebuild", () => {
     expect(templateAfter).toEqual(templateBefore);
   });
 
-  test("prepare - negative test", async () => {
+  test("prepare - passing test", async () => {
     const rootModule: Module = getTestRootModule(dir);
     const _moduleNode: ModuleNode = getTestModuleNode(rootModule);
     const _moduleAName = "moduleA";
@@ -167,48 +190,71 @@ describe("Test Hooks - build and prebuild", () => {
 
     await expect(prepare(context)).resolves.toBeUndefined();
 
-    let template = await readFile(
-      join(cwd, TESTS, TEST_DATA, "template-after-prepare.yaml"),
-      { encoding: "utf8" }
-    );
-    template = template.replace(/\${dirPath}/g, dir);
-    template = template.replace(/\${sq}/g, "'");
+    const template = (await readYamlFileStore(
+      join(cwd, TESTS, TEST_DATA, "template-after-prepare.yaml")
+    )) as TemplateDummyType;
 
-    const templateCreated = await readFile(join(dir, "template.yaml"), {
-      encoding: "utf8"
-    });
+    template.Resources["somod-http-extensionfnA"].Properties.ContentUri =
+      template.Resources[
+        "somod-http-extensionfnA"
+      ].Properties.ContentUri.replace(/\${dirPath}/g, dir);
+
+    template.Resources["somod-http-extensionfnB"].Properties.ContentUri =
+      template.Resources[
+        "somod-http-extensionfnB"
+      ].Properties.ContentUri.replace(/\${dirPath}/g, dir);
+    // template = template.replace(/\${sq}/g, "'");
+
+    const templateModified = (await readYamlFileStore(
+      join(dir, "template.yaml")
+    )) as TemplateDummyType;
 
     const _fnL = join(dir, SOMOD, SERVERLESS, FUNCTION_LAYERS);
     const _pathRouteA = join(
       _fnL,
       _moduleAName,
-      SOMOD_HTTP_EXTENSION + "fnA",
+      SOMOD_HTTP_EXTENSION + "-fnA",
       SOMOD_HTTP_EXTENSION,
       "routes.js"
     );
     const _pathSchemaA = join(
       _fnL,
       _moduleAName,
-      SOMOD_HTTP_EXTENSION + "fnA",
+      SOMOD_HTTP_EXTENSION + "-fnA",
       SOMOD_HTTP_EXTENSION,
       "GET__user__userId_body.js"
     );
     const _pathRouteB = join(
       _fnL,
-      _moduleAName,
-      SOMOD_HTTP_EXTENSION + "fnB",
+      _moduleBName,
+      SOMOD_HTTP_EXTENSION + "-fnB",
       SOMOD_HTTP_EXTENSION,
       "routes.js"
     );
     const _pathSchemaB = join(
       _fnL,
-      _moduleAName,
-      SOMOD_HTTP_EXTENSION + "fnB",
+      _moduleBName,
+      SOMOD_HTTP_EXTENSION + "-fnB",
       SOMOD_HTTP_EXTENSION,
       "GET__user__userId_body.js"
     );
-    expect(template).toEqual(templateCreated);
-    expect(existsSync(_pathRouteA)).toEqual(true);
+
+    expect(template.Resources.FuncitonA).toEqual(
+      templateModified.Resources.FuncitonA
+    );
+    expect(template.Resources.FuncitonB).toEqual(
+      templateModified.Resources.FuncitonB
+    );
+    expect(template.Resources["somod-http-extensionfnA"]).toEqual(
+      templateModified.Resources["somod-http-extensionfnA"]
+    );
+    expect(template.Resources["somod-http-extensionfnB"]).toEqual(
+      templateModified.Resources["somod-http-extensionfnB"]
+    );
+    expect(template.Resources.sampleLayer).toEqual(
+      templateModified.Resources.sampleLayer
+    );
+    expect(true).toEqual(existsSync(_pathRouteA));
     expect(true).toEqual(existsSync(_pathSchemaA));
     expect(true).toEqual(existsSync(_pathRouteB));
     expect(true).toEqual(existsSync(_pathSchemaB));

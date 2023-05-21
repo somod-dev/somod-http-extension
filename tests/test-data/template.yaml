@@ -7,13 +7,13 @@ Globals:
     Architectures:
       - arm64
 Resources:
-  r98a6ba03HttpApiGateway:
+  HttpApiGateway:
     Type: AWS::Serverless::HttpApi
     Properties:
       CorsConfiguration:
         AllowOrigins:
           - "*"
-  FuncitonA:
+  FunctionA:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .somod/serverless/functions/moduleA/fnA
@@ -27,7 +27,7 @@ Resources:
               Ref: r98a6ba03HttpApiGateway
       Layers:
         - Ref: sampleLayer
-  FuncitonB:
+  FunctionB:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .somod/serverless/functions/@test/moduleB/fnB
@@ -45,4 +45,4 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
       ContentUri: >-
-        /home/lohith/tech/github/loki-samples/sample-extension-test/somod-http-extension-test/.somod/serverless/functionLayers/somod-http-extension-test/myFunction
+        .somod/serverless/functionLayers/somod-http-extension-test/myFunction
