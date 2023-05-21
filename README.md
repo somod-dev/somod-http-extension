@@ -2,24 +2,86 @@
 
 ---
 
-This is an extension project written in accrodance with SOMOD [extensions](https://docs.somod.dev/reference/main-concepts/extensions) and [middleware](https://docs.somod.dev/reference/main-concepts/serverless/middlewares) specifications.
+The [SOMOD](https://somod.dev) Extension to validate HTTP Request in Serverless Functions.
 
-> This documentation assumes users have prior knowledge of [SOMOD](https://docs.somod.dev/) and [JsonSchema7](https://json-schema.org/).
+> This extensions works with Functions of type `HttpApi` Only.
 
-**Install**
+## Install
+
+Install as an npm package in somod modules
 
 ```bash
 npm install somod-http-extension
 ```
 
-## **Extension**
+## Usage
 
-For each function written inside `serverless/functions/<function>.ts | .js` the extension looks for configuraion file(optional) named `<function>.http.yaml` in the same directory. All the dependent and current somod modules are scanned.
+### Configure Routes and Schemas
 
-Each file `<function.ts>` can be configured to accept multiple routes. You can use library [HttpLambda](#httplambda) to map routes to functions.
-routes defined inside `<function>.http.yaml` should match `AWS::Serverless::Function`(Events property) [`template.yaml`](https://docs.somod.dev/reference/main-concepts/serverless/template.yaml).
+Routes configuration for each serverless function can be provided using an yaml file at `serverless/functions/<function_name>.http.yaml`.
 
-**`Routes configuratoin file`**
+Example:
+
+```yaml
+# serverless/functions/user.http.yaml
+
+/user/{userId}:
+  GET:
+    pathParameters:
+      schema: # JSONSchema7
+        type: object
+        required: [userId]
+        properties:
+          userId:
+            type: string
+            maxLength: 32
+  POST:
+    pathParameters:
+      schema: # JSONSchema7
+        type: object
+        required: [userId]
+        properties:
+          userId:
+            type: string
+            maxLength: 32
+    body:
+      parser: json
+      schema:
+        type: object
+        required: [name]
+        properties:
+          name:
+            type: string
+            maxLength: 32
+          email:
+            type: string
+            format: email
+```
+
+### Access Sanitized Request
+
+This extension adds a middleware to validate and sanitize the incoming http request. The sanitized request can be accessed using the [middleware](https://docs.somod.dev/reference/main-concepts/serverless/middlewares)'s context using **`somod-http-request`** key.
+
+Example:
+
+```typescript
+// serverless/functions/user.ts
+
+const UserService = event => {
+  const request = event.somodMiddlewareContext.get("somod-http-request");
+  // use request to read the data from the incoming http request
+};
+
+export default UserService;
+```
+
+This extension also provides an utility library to create Serverless Functions with multiple routes easily. Refer to [RouteHandler](#routehandler) for more details
+
+## Specification
+
+### Structure of Routes configuration file
+
+In general, routes configuration in `<function_name>.http.yaml` file follows below structure
 
 ```yaml
 <path>:
@@ -31,80 +93,96 @@ routes defined inside `<function>.http.yaml` should match `AWS::Serverless::Func
     queryStringParameters?:
       schema: <json schema>
     body?:
+      parser?: <"text"|"json">
       schema: <json schema>
-      parse: "string" | "object"
 ```
 
-- example
+The complete JSONSchema is available [here](/routes-schema.ts)
 
-```yaml
-"/user/{userId}":
-  "GET":
-    headers:
-      schema: { type: "object" }
-    body:
-      parser: "object"
-      schema: { type: "object" }
-  "POST": {}
-```
+### Type of the Request object
 
-`headers,pathParameters,queryStringParameters and body` are the keys of [aws event object](https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html#apigateway-example-event) only evnt version v2 is allowed.
-
-- <path> and <method>
-
-  Both are validated against the request received, if not matched 404 error will be thrown.
-
-- <json schema>
-
-  refer [josn schema](https://json-schema.org/)
-
-- parser
-
-  parser type to be used, default value is `object`. only `string` and `object` types are supported.
-
-  > by defalut body type will be string in `aws event object`
-
-- `Hooks`
-
-  ### prebuild
-
-  validate `<function>.http.yaml` file.
-
-  ### build
-
-  transform `<function>.http.yaml` file to `<function>.http.json` and put it inside build folder.
-
-  ### prepare
-
-  - transform <function>.http.json file and precompile the given schemas for better runtime performance.
-
-## **middleware**
-
-routes and schemas are validated against the request received. If not matched 404 error will be thrown. request body will be prased according to configuraiton.
-
-## **HttpLambda**
-
-this library maps functions to routes.
-
-create an object of `HttpLambda` and call `register` method to attach function to be called on specific route.
+The request object accessed using `event.somodMiddlewareContext.get("somod-http-request")` has this type.
 
 ```typescript
-new HttpLambda().register(`<path>`, `<method>`, `<lambda fuction>`);
-```
-
-**example**
-
-```typescript
-import { HttpLambda } from "http-lambda";
-
-const http = new HttpLambda();
-
-const loginFn = (event) => {
-  ...
+type Request<T = unknown> = {
+  route: string;
+  method: string;
+  pathParameters: Record<string, string>;
+  queryStringParameters: Record<string, string>;
+  headers: Record<string, string>;
+  body: T;
 };
-
-http.register("/user/login/{userid}", "POST",loginFn);
-
-export default http;
-
 ```
+
+The `Request` Type is available from this extension to use as below
+
+```typescript
+import { Request } from "somod-http-extension";
+```
+
+### HTTP Error Types
+
+The validation middleware returns following HTTP error codes
+
+- `404` - When the method and path in the incoming http request does not match any of the configured routes.
+- `400` - When the parsing or validating the input fails with respect to configuration in the `<function_name>.http.yaml`.
+- `500` - Any other failures.
+
+## RouteHandler
+
+The `RouteHandler` is a wrapper javascript utility library to create serverless functions with multiple routes.
+
+### Using the RouteHandler
+
+```typescript
+// serverless/function/user.ts
+import { RouteHandler } from "somod-http-extension";
+
+const handler = new RouteHandler();
+
+handler.add("/user/{userId}", "get", getUserFunction);
+handler.add("/user/{userId}", "post", updateUserFunction);
+
+export default handler.handle();
+```
+
+### RouteHandler Specification
+
+RouteHandler has 2 methods
+
+- `add`
+
+```typescript
+function add(
+  path: string,
+  method: string,
+  handler: (request: Request, event: RawEvent) => Promise<Response>
+): void {
+  //
+}
+```
+
+The handler recieves the [sanitized request object](#type-of-the-request-object) and the raw event from the aws. The handler has to return a promise resolving to response.
+
+> The Raw Event type and Response type is documented [here](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html) in the AWS specification.  
+> This extension works with HTTP Payload format version 2.0 only
+
+- `handle`
+
+```typescript
+function handle(): (event: RawEvent) => Promise<Response> {
+  //
+}
+```
+
+handle function returns the function which is a lambda function handler
+
+## Issues
+
+The project issues, features, and milestones are maintained in this GitHub repo.
+
+Create issues or feature requests at https://github.com/somod-dev/somod-http-extension/issues
+
+## Contributions
+
+Please read our [CONTRIBUTING](https://github.com/somod-dev/somod/blob/main/CONTRIBUTING.md) guide before contributing to this project.
