@@ -8,7 +8,7 @@ export type Copy<T> = { [K in keyof T]: T[K] };
 export type EventType =
   APIGatewayProxyEventV2WithLambdaAuthorizer<AuthorizerContextType>;
 
-export type CustomEventType<TBody = Record<any, unknown>> =
+export type RequestEventType<TBody = unknown> =
   APIGatewayProxyEventV2WithLambdaAuthorizer<AuthorizerContextType> & {
     body: TBody;
   };
@@ -18,17 +18,24 @@ export type RoutesTransformed = Record<string, KeyOptions>;
 
 export type HttpMethodOptions = Record<HttpMethod, KeyOptions>;
 
+export enum InputType {
+  "headers" = "headers",
+  "pathParameters" = "pathParameters",
+  "queryStringParameters" = "queryStringParameters",
+  "body" = "body"
+}
+
 export type KeyOptions = {
-  headers?: {
+  [InputType.headers]?: {
     schema: JSONSchema7;
   };
-  pathParameters?: {
+  [InputType.pathParameters]?: {
     schema: JSONSchema7;
   };
-  queryStringParameters?: {
+  [InputType.queryStringParameters]?: {
     schema: JSONSchema7;
   };
-  body?: {
+  [InputType.body]?: {
     //one of below is mandatory
     schema?: JSONSchema7;
     parser?: ParserType;
@@ -37,22 +44,21 @@ export type KeyOptions = {
 
 export enum HttpMethod {
   "GET" = "GET",
+  "HEAD" = "HEAD",
   "POST" = "POST",
   "PUT" = "PUT",
   "DELETE" = "DELETE",
-  "HEAD" = "HEAD"
+  "CONNECT" = "CONNECT",
+  "OPTIONS" = "OPTIONS",
+  "TRACE" = "TRACE",
+  "PATCH" = "PATCH"
 }
 
 export const BODY = "body";
 
-// export type Options = {
-//   schema?: JSONSchema7 | boolean;
-//   type?: ParserType;
-// };
-
 export enum ParserType {
-  "string" = "string",
-  "object" = "object"
+  "text" = "text",
+  "json" = "json"
 }
 
 export enum ParameterTypes {
@@ -62,16 +68,26 @@ export enum ParameterTypes {
   "queryStringParameters" = "queryStringParameters"
 }
 
-export type HttpResponse = {
+export type Response = {
   statusCode: number;
   body?: string;
   headers?: Record<string, string>;
 };
 
+export type Request<T = unknown> = {
+  route: string;
+  method: string;
+  pathParameters: Record<string, string>;
+  queryStringParameters: Record<string, string>;
+  headers: Record<string, string>;
+  body: T;
+};
+
 export type DefaultAdditionalParametersType = Record<string, unknown>;
 export type DefaultBodyType = Record<string, unknown>;
 
-export type RouteHandlerType = (
+export type RouteHandlerType<T = unknown> = (
+  request: Request<T>,
   event: EventWithMiddlewareContext<Copy<EventType>>
 ) => Promise<string | Record<string, unknown> | void>;
 

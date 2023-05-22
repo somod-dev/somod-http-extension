@@ -1,124 +1,130 @@
 /* eslint-disable no-console */
-// serverless/functions/middlewares/myMiddleware.ts
-
-import { EventWithMiddlewareContext, Middleware } from "somod";
+import { join } from "path";
+import { Middleware } from "somod";
 import {
-  BODY,
   Copy,
   EventType,
+  HttpMethod,
+  InputType,
   KeyOptions,
-  LAYERS_BASE_PATH,
-  RoutesTransformed,
-  ParserType
+  ParserType,
+  Request,
+  RoutesTransformed
 } from "../../../lib/types";
 import { encodeFileSystem } from "../../../lib/utils";
 
-const Routes_FILE_PATH = "/opt/routes.js";
+const ROUTES_FILE = "routes.js";
+const LAYERS_BASE_PATH = "/opt/somod-http-extension";
 
-const myMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
+const httpMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
   let keyOptions = {} as KeyOptions;
+  /**
+   * TODO: add route here
+   * TODO: add schema file location in yaml file
+   * TODO: create schema file in build folder for writing routes
+   */
+  const request = {
+    method: event.requestContext.http.method
+  } as Request;
   try {
     console.log("inside myMiddleware");
 
     // eslint-disable-next-line import/no-unresolved
-    const _obj = await import(Routes_FILE_PATH);
+    const _obj = await import(join(LAYERS_BASE_PATH, ROUTES_FILE));
     const routes = _obj.routes as RoutesTransformed;
-    keyOptions = routes[event.routeKey] as KeyOptions;
-    if (!routes || !keyOptions) {
+    /**
+     * TODO: check if we need to use toLocaleLowerCase()
+     */
+    keyOptions = (routes[event.routeKey] as KeyOptions) ?? {};
+    if (!routes) {
       return {
         statusCode: 404,
-        body: "request url doesnot exists"
+        body: "request url doesnot match routes configuration"
       };
     }
-    console.log("keyOptions");
-    console.log(keyOptions);
+
+    if (keyOptions.headers?.schema) {
+      validate(event.headers, event.routeKey, InputType.headers);
+    }
+
+    if (keyOptions.pathParameters?.schema) {
+      validate(event.pathParameters, event.routeKey, InputType.pathParameters);
+    }
+
+    if (keyOptions.queryStringParameters?.schema) {
+      validate(
+        event.queryStringParameters,
+        event.routeKey,
+        InputType.queryStringParameters
+      );
+    }
+
+    if (event.body) {
+      request.body = await parseBody(
+        event.body,
+        keyOptions.body,
+        event.requestContext.http.method
+      );
+    }
+
+    if (keyOptions.body?.schema) {
+      await validate(event.body, event.routeKey, InputType.body);
+    }
   } catch (error) {
-    /**
-     * TODO: log error here
-     */
     console.log("Error getting the given route myMiddleware");
     return {
       statusCode: 404,
-      body: "request url doesnot match routes configuration"
-    };
-  }
-
-  try {
-    await validateParameters(event, keyOptions);
-  } catch (error) {
-    /**
-     * TODO: do we need to log error here
-     */
-    console.log("Error validateParameters myMiddleware");
-    console.log(error);
-    return {
-      statusCode: 400,
       body: error.message
     };
   }
 
-  /**
-   * TODO: for testing to be removed
-   */
   event.somodMiddlewareContext.set("somod-http-extension", {
-    testing: "sample meddleware context testing"
+    body: request.body,
+    headers: event.headers,
+    pathParameters: event.pathParameters,
+    queryStringParameters: event.queryStringParameters
   });
 
-  let result: unknown = null;
-  result = await next();
+  const result = await next();
 
   return result;
 };
 
-const validateParameters = async (
-  event: EventWithMiddlewareContext<Copy<EventType>>,
-  keyOptions: KeyOptions
-): Promise<void> => {
-  console.log("inside validateParameters");
-  await Promise.all(
-    Object.keys(keyOptions).map(async key => {
-      if (!keyOptions[key].schema) {
-        return;
-      }
-
-      const validateFilePath = encodeFileSystem(event.routeKey, key);
-      const path = LAYERS_BASE_PATH + validateFilePath;
-      console.log("Path is ");
-      console.log(path);
-      // eslint-disable-next-line prefer-const
-      let validate = await import(path);
-      console.log("import passed");
-      console.log(validate);
-      // let _obj = getEventPropertyByKey(event, key);
-      let _obj = event[key] ? event[key] : null;
-
-      if (key === BODY) {
-        _obj = parseBody(_obj as string, keyOptions[key]?.parser);
-        console.log("parsed json");
-      }
-
-      console.log(_obj);
-      // eslint-disable-next-line prefer-const
-      let valid = validate.default;
-      const isValid = valid(_obj);
-      console.log(isValid);
-      if (!isValid) {
-        console.log("hey error in validator - ");
-        console.log(valid);
-        console.log(valid.errors);
-        throw new Error(validate.errors);
-      }
-    })
-  );
-};
-
-const parseBody = (obj: string, parseType?: ParserType) => {
-  console.log("inside parser");
-  if (parseType == ParserType.string) {
-    return obj;
+const parseBody = async (
+  body: string,
+  bodyOptions: KeyOptions[InputType.body],
+  method: string
+) => {
+  try {
+    if (
+      bodyOptions?.parser !== ParserType.text &&
+      (bodyOptions?.parser == ParserType.json ||
+        method == HttpMethod.POST ||
+        method == HttpMethod.PUT ||
+        method == HttpMethod.DELETE ||
+        method == HttpMethod.PATCH)
+    ) {
+      body = JSON.parse(body);
+    }
+  } catch (error) {
+    throw new Error("Error while parsing request body " + error.message);
   }
-  console.log("ParserType type not string - " + obj);
-  return JSON.parse(obj);
 };
 
-export default myMiddleware;
+const validate = async (data: unknown, routeKey: string, key: string) => {
+  const validateFilePath = encodeFileSystem(routeKey, key);
+  const path = LAYERS_BASE_PATH + validateFilePath;
+
+  // eslint-disable-next-line prefer-const
+  let validate = await import(path);
+  const isValid = validate.default(data);
+  if (!isValid) {
+    throw new Error(
+      validate.default.errors.instancePath +
+        " : " +
+        validate.default.errors.message
+    );
+  }
+};
+
+export default httpMiddleware;
