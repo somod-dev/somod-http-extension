@@ -22,7 +22,7 @@ import {
   Routes,
   RoutesTransformed
 } from "./lib/types";
-import { encodeFileSystem as encodeFileName } from "./lib/utils";
+import { encodeFilePath as encodeFileName } from "./lib/utils";
 import { schema } from "./routes-schema";
 
 type Hook = Extension["prebuild"];
@@ -56,11 +56,9 @@ export const prebuild: Hook = async (context: IContext) => {
     FUNCTIONS
   );
   const _rFileNames = await getRouteFileNames(_functionsDir, DOT_TS, HTTP_YAML);
-
   const ajv = getAjv();
   for (const _rFile of _rFileNames) {
     const _routeFilePath = join(_functionsDir, _rFile + HTTP_YAML);
-
     const routes = (await readYamlFileStore(_routeFilePath)) as Routes;
     const violations: Violation[] = await validate(schema, routes);
     if (violations.length > 0) {
@@ -296,4 +294,4 @@ const parseFunctions = (template: JSONObjectType) => {
   return functions;
 };
 
-export const functionMiddlewares = ["somod-http-middleware"];
+export const functionMiddlewares = ["somodHttpMiddleware"];

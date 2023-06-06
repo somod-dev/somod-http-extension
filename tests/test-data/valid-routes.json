@@ -2,7 +2,7 @@
   "/user/{userId}": {
     "GET": {
       "body": {
-        "parser": "string",
+        "parser": "text",
         "schema": {
           "type": "object",
           "properties": {

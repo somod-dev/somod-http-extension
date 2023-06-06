@@ -189,6 +189,8 @@ describe("Test Hooks - build and prebuild", () => {
     const errorMessage =
       "~1user~1{userId}.GET : must NOT have additional properties" +
       "\n" +
+      "~1user~1{userId}.GET.body.parser : must be equal to one of the allowed values" +
+      "\n" +
       "~1user~1{userId}.GET.body.schema : must be object,boolean";
 
     await expect(prebuild(context)).rejects.toThrowError(errorMessage);
@@ -253,9 +255,7 @@ describe("Test Hooks - build and prebuild", () => {
 
     await build(context);
 
-    console.log(buildSchemaDir);
     const fileNames = await listFiles(buildSchemaDir);
-    console.log(fileNames);
 
     expect(true).toEqual(fileNames.includes(_fOne + ".http.json"));
     expect(true).toEqual(fileNames.includes(_fThree + ".http.json"));

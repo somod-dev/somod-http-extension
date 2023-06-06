@@ -1,6 +1,8 @@
 import {
+  EventWithMiddlewareContext,
   IContext,
   IExtensionHandler,
+  IMiddlewareContext,
   IModuleHandler,
   INamespaceHandler,
   IServerlessTemplateHandler,
@@ -8,6 +10,11 @@ import {
   ModuleNode
 } from "somod";
 import { ROOT_MODULE_NAME } from "./extension-prepare.test";
+import { AuthorizerContextType, Copy, EventType } from "../lib/types";
+import {
+  APIGatewayEventRequestContextLambdaAuthorizer,
+  APIGatewayEventRequestContextV2WithAuthorizer
+} from "aws-lambda";
 
 export const getTestRootModule = (path: string) => {
   const rootModule: Module = {
@@ -54,4 +61,25 @@ export const getTestContext = (
     namespaceHandler: {} as INamespaceHandler,
     serverlessTemplateHandler: sth ?? ({} as IServerlessTemplateHandler)
   };
+};
+
+export const getEvent = (routeKey?: string, method?: string, body?: string) => {
+  const event: EventWithMiddlewareContext<Copy<EventType>> = {
+    version: "",
+    routeKey: routeKey ?? "PUT /user/{userId}",
+    rawPath: "",
+    rawQueryString: "",
+    headers: {},
+    requestContext: {
+      http: {
+        method: method ?? "PUT"
+      }
+    } as APIGatewayEventRequestContextV2WithAuthorizer<
+      APIGatewayEventRequestContextLambdaAuthorizer<AuthorizerContextType>
+    >,
+    isBase64Encoded: false,
+    somodMiddlewareContext: {} as IMiddlewareContext,
+    body: body ?? '{ "body": "I am sample body" }'
+  };
+  return event;
 };

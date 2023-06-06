@@ -1,85 +1,50 @@
-/* eslint-disable no-console */
 import { join } from "path";
-import { Middleware } from "somod";
+import { EventWithMiddlewareContext, Middleware } from "somod";
+import {
+  LAYERS_MODULE_BASE_PATH,
+  ROUTES_FILE,
+  SOMOD_HTTP_EXTENSION
+} from "../../../lib/constants";
 import {
   Copy,
   EventType,
+  GeneratedOptions,
   HttpMethod,
   InputType,
-  KeyOptions,
   ParserType,
   Request,
   RoutesTransformed
 } from "../../../lib/types";
-import { encodeFileSystem } from "../../../lib/utils";
-
-const ROUTES_FILE = "routes.js";
-const LAYERS_BASE_PATH = "/opt/somod-http-extension";
+import { validate } from "../../../lib/utils";
 
 const httpMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
-  let keyOptions = {} as KeyOptions;
   /**
-   * TODO: add route here
+   * TODO: add test case, define schema as josn directly and use it
    * TODO: add schema file location in yaml file
    * TODO: create schema file in build folder for writing routes
    */
-  const request = {
-    method: event.requestContext.http.method
-  } as Request;
-  try {
-    console.log("inside myMiddleware");
 
-    // eslint-disable-next-line import/no-unresolved
-    const _obj = await import(join(LAYERS_BASE_PATH, ROUTES_FILE));
-    const routes = _obj.routes as RoutesTransformed;
-    /**
-     * TODO: check if we need to use toLocaleLowerCase()
-     */
-    keyOptions = (routes[event.routeKey] as KeyOptions) ?? {};
-    if (!routes) {
-      return {
-        statusCode: 404,
-        body: "request url doesnot match routes configuration"
-      };
-    }
+  const _options = await getRouteOptions(
+    event,
+    LAYERS_MODULE_BASE_PATH,
+    ROUTES_FILE
+  );
 
-    if (keyOptions.headers?.schema) {
-      validate(event.headers, event.routeKey, InputType.headers);
-    }
-
-    if (keyOptions.pathParameters?.schema) {
-      validate(event.pathParameters, event.routeKey, InputType.pathParameters);
-    }
-
-    if (keyOptions.queryStringParameters?.schema) {
-      validate(
-        event.queryStringParameters,
-        event.routeKey,
-        InputType.queryStringParameters
-      );
-    }
-
-    if (event.body) {
-      request.body = await parseBody(
-        event.body,
-        keyOptions.body,
-        event.requestContext.http.method
-      );
-    }
-
-    if (keyOptions.body?.schema) {
-      await validate(event.body, event.routeKey, InputType.body);
-    }
-  } catch (error) {
-    console.log("Error getting the given route myMiddleware");
+  if (!_options) {
     return {
       statusCode: 404,
-      body: error.message
+      body: "requested url not found in the given configuration"
     };
   }
 
-  event.somodMiddlewareContext.set("somod-http-extension", {
-    body: request.body,
+  const request = await parseAndValidate(
+    event,
+    LAYERS_MODULE_BASE_PATH,
+    _options
+  );
+
+  event.somodMiddlewareContext.set(SOMOD_HTTP_EXTENSION, {
+    body: request?.body,
     headers: event.headers,
     pathParameters: event.pathParameters,
     queryStringParameters: event.queryStringParameters
@@ -90,9 +55,79 @@ const httpMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
   return result;
 };
 
+export const getRouteOptions = async (
+  event: EventWithMiddlewareContext<Copy<EventType>>,
+  basePath: string,
+  routesFile: string
+): Promise<GeneratedOptions> => {
+  let _obj = { routes: {} };
+  const _path = join(basePath, routesFile);
+  try {
+    // eslint-disable-next-line import/no-unresolved
+    _obj = await import(_path);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `dynamic import error, file dose not exists : ${_path} , ${error.message}`
+    );
+    throw new Error("Internal Server Error");
+  }
+
+  const routes = _obj.routes as RoutesTransformed;
+  return routes[event.routeKey];
+};
+
+export const parseAndValidate = async (
+  event: EventWithMiddlewareContext<Copy<EventType>>,
+  basePath: string,
+  options: GeneratedOptions
+): Promise<Request> => {
+  const request = {
+    method: event.requestContext.http.method
+  } as Request;
+
+  if (options.headers?.schema) {
+    validate(event.headers, event.routeKey, InputType.headers, basePath);
+  }
+
+  if (options.pathParameters?.schema) {
+    validate(
+      event.pathParameters,
+      event.routeKey,
+      InputType.pathParameters,
+      basePath
+    );
+  }
+
+  if (options.queryStringParameters?.schema) {
+    validate(
+      event.queryStringParameters,
+      event.routeKey,
+      InputType.queryStringParameters,
+      basePath
+    );
+  }
+
+  /**
+   * parse will not happen if body is empty
+   */
+  request.body = event.body
+    ? await parseBody(
+        event.body,
+        options.body,
+        event.requestContext.http.method
+      )
+    : undefined;
+
+  if (options.body?.schema) {
+    await validate(request.body, event.routeKey, InputType.body, basePath);
+  }
+  return request;
+};
+
 const parseBody = async (
   body: string,
-  bodyOptions: KeyOptions[InputType.body],
+  bodyOptions: GeneratedOptions[InputType.body],
   method: string
 ) => {
   try {
@@ -107,24 +142,9 @@ const parseBody = async (
       body = JSON.parse(body);
     }
   } catch (error) {
-    throw new Error("Error while parsing request body " + error.message);
+    throw new Error("Error while parsing request body : " + error.message);
   }
-};
-
-const validate = async (data: unknown, routeKey: string, key: string) => {
-  const validateFilePath = encodeFileSystem(routeKey, key);
-  const path = LAYERS_BASE_PATH + validateFilePath;
-
-  // eslint-disable-next-line prefer-const
-  let validate = await import(path);
-  const isValid = validate.default(data);
-  if (!isValid) {
-    throw new Error(
-      validate.default.errors.instancePath +
-        " : " +
-        validate.default.errors.message
-    );
-  }
+  return body;
 };
 
 export default httpMiddleware;

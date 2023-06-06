@@ -55,7 +55,7 @@ type TemplateDummyType = {
   };
 };
 
-describe("Test Hooks - build and prebuild", () => {
+describe("Test Hooks - prepare", () => {
   let dir = "";
   const cwd = process.cwd();
   beforeEach(() => {

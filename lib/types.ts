@@ -14,9 +14,9 @@ export type RequestEventType<TBody = unknown> =
   };
 
 export type Routes = Record<string, HttpMethodOptions>;
-export type RoutesTransformed = Record<string, KeyOptions>;
+export type RoutesTransformed = Record<string, GeneratedOptions>;
 
-export type HttpMethodOptions = Record<HttpMethod, KeyOptions>;
+export type HttpMethodOptions = Record<HttpMethod, InputOptions>;
 
 export enum InputType {
   "headers" = "headers",
@@ -25,7 +25,7 @@ export enum InputType {
   "body" = "body"
 }
 
-export type KeyOptions = {
+export type InputOptions = {
   [InputType.headers]?: {
     schema: JSONSchema7;
   };
@@ -38,6 +38,23 @@ export type KeyOptions = {
   [InputType.body]?: {
     //one of below is mandatory
     schema?: JSONSchema7;
+    parser?: ParserType;
+  };
+};
+
+export type GeneratedOptions = {
+  [InputType.headers]?: {
+    schema: boolean;
+  };
+  [InputType.pathParameters]?: {
+    schema: boolean;
+  };
+  [InputType.queryStringParameters]?: {
+    schema: boolean;
+  };
+  [InputType.body]?: {
+    //one of below is mandatory
+    schema?: boolean;
     parser?: ParserType;
   };
 };
@@ -102,4 +119,10 @@ export type AwsServerlessFunctionType = {
 export type Names = {
   functionName: string;
   moduleName: string;
+};
+
+export const mockedFunction = <T extends (...args: unknown[]) => unknown>(
+  f: T
+): jest.MockedFunction<T> => {
+  return f as jest.MockedFunction<T>;
 };

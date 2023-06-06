@@ -1,6 +1,9 @@
 import { JSONSchema7 } from "json-schema";
 
 export const schema: JSONSchema7 = {
+  $schema: "http://json-schema.org/draft-07/schema",
+  $id: "https://somod-http-extension.sodev.com/routes-schema.json",
+  title: "JSON Schema for rotues configuration",
   type: "object",
   additionalProperties: false,
   patternProperties: {
@@ -42,7 +45,7 @@ export const schema: JSONSchema7 = {
               minProperties: 1,
               additionalProperties: false,
               properties: {
-                parser: { enum: ["string", "object"] },
+                parser: { enum: ["text", "json"] },
                 schema: { $ref: "http://json-schema.org/draft-07/schema" }
               }
             }

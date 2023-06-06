@@ -8,7 +8,7 @@
     "prebuild": "npm run prettier && npm run eslint",
     "build": "npx somod build",
     "pretest": "npm run build",
-    "test": "echo 'No Tests'",
+    "test": "npx jest",
     "prepack": "npm run test",
     "start": "npx somod start",
     "deploy": "npx somod deploy"
