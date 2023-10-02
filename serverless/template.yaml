@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../node_modules/somod-schema/schemas/serverless-template/index.json
+
+Resources:
+  SomodHttpMiddleware:
+    Type: SOMOD::Serverless::FunctionMiddleware
+    Properties:
+      CodeUri:
+        SOMOD::FunctionMiddleware:
+          name: httpMiddleware
+          allowedTypes:
+            - HttpApi
+      Layers:
+        - decorated-ajv
