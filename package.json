@@ -1,6 +1,6 @@
 {
   "name": "somod-http-extension",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "scripts": {
     "prettier": "npx prettier --check --ignore-unknown --no-error-on-unmatched-pattern ./**/*",
