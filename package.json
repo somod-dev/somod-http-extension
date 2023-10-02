@@ -1,7 +1,7 @@
 {
   "name": "somod-http-extension",
   "version": "1.0.1",
-  "description": "",
+  "description": "SOMOD middleware to intercept and validate Lambda event for AWS APIGateway",
   "scripts": {
     "prettier": "npx prettier --check --ignore-unknown --no-error-on-unmatched-pattern ./**/*",
     "eslint": "npx eslint ./ --no-error-on-unmatched-pattern",
@@ -12,9 +12,28 @@
     "prepack": "npm run test",
     "postversion": "git push --follow-tags"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/somod-dev/somod-http-extension.git"
+  },
+  "keywords": [
+    "somod",
+    "lambda",
+    "api-gateway",
+    "aws",
+    "serverless"
+  ],
+  "author": "Raghavendra K R <raghavendra@sodaru.com>",
+  "contributors": [
+    "Raghavendra K R <raghavendra@sodaru.com>",
+    "Lokesh G C <lokesh@sodaru.com>",
+    "Sukhesh M G <sukhesh@sodaru.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/somod-dev/somod-http-extension/issues"
+  },
+  "homepage": "https://github.com/somod-dev/somod-http-extension#readme",
   "devDependencies": {
     "@types/aws-lambda": "^8.10.115",
     "@types/node": "^18.11.9",
