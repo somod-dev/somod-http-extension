@@ -9,7 +9,8 @@
     "build": "npx somod build",
     "pretest": "npm run build",
     "test": "echo 'no tests so far'",
-    "prepack": "npm run test"
+    "prepack": "npm run test",
+    "postversion": "git push --follow-tags"
   },
   "keywords": [],
   "author": "",
