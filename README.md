@@ -91,7 +91,7 @@ const UserService = event => {
 export default UserService;
 ```
 
-This module also provides a utility library to create Serverless Functions with multiple routes easily. Refer to [RouteHandler](#routehandler) for more details
+This module also provides a utility library to create Serverless Functions with multiple routes easily. Refer to [RouteBuilder](#routeBuilder) for more details
 
 ## Specification
 
@@ -150,27 +150,27 @@ The validation middleware returns the following HTTP error codes
 - `400` - When the parsing or validating of the incoming request fails (following the configuration in `<function_name>.http.yaml`).
 - `500` - Any other failures.
 
-## RouteHandler
+## RouteBuilder
 
-The `RouteHandler` is a wrapper javascript utility library to create serverless functions with multiple routes.
+The `RouteBuilder` is a wrapper javascript utility library to create serverless functions with multiple routes.
 
-### Using the RouteHandler
+### Using the RouteBuilder
 
 ```typescript
 // serverless/function/user.ts
-import { RouteHandler } from "somod-http-extension";
+import { RouteBuilder } from "somod-http-extension";
 
-const handler = new RouteHandler();
+const builder = new RouteBuilder();
 
-handler.add("/user/{userId}", "get", getUserFunction);
-handler.add("/user/{userId}", "post", updateUserFunction);
+builder.add("/user/{userId}", "get", getUserFunction);
+builder.add("/user/{userId}", "post", updateUserFunction);
 
-export default handler.handle();
+export default builder.getHandler();
 ```
 
-### RouteHandler Specification
+### RouteBuilder Specification
 
-RouteHandler has 2 methods
+RouteBuilder has 2 methods
 
 - `add`
 

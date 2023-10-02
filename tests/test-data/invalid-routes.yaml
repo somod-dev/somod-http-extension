@@ -1,6 +1,0 @@
-"/user/{userId}":
-  "GET":
-    invalid: "i am not valid"
-    body:
-      parser: "string"
-      schema: "should be an object not string"

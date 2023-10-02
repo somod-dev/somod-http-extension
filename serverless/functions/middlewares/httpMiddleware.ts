@@ -1,150 +1,247 @@
+import { Middleware } from "somod";
+import { Routes } from "../../../lib/routes-schema";
 import { join } from "path";
-import { EventWithMiddlewareContext, Middleware } from "somod";
 import {
-  LAYERS_MODULE_BASE_PATH,
-  ROUTES_FILE,
-  SOMOD_HTTP_EXTENSION
+  FILE_ROUTES_HTTP_JSON,
+  MIDDLEWARE_CONTEXT_KEY,
+  PATH_HTTP_SCHEMAS
 } from "../../../lib/constants";
+import { existsSync } from "fs";
+import { readFile } from "fs/promises";
+import { validate } from "decorated-ajv";
+import { ValidateFunction } from "ajv";
+import { getHttpSchemaPath } from "../../../lib/utils";
+import { decode } from "querystring";
 import {
-  Copy,
-  EventType,
-  GeneratedOptions,
-  HttpMethod,
-  InputType,
-  ParserType,
+  BadRequestError,
+  Event,
+  NoRouteFoundError,
   Request,
-  RoutesTransformed
+  Result,
+  RouteConfig
 } from "../../../lib/types";
-import { validate } from "../../../lib/utils";
 
-const httpMiddleware: Middleware<Copy<EventType>> = async (next, event) => {
-  /**
-   * TODO: add test case, define schema as josn directly and use it
-   * TODO: add schema file location in yaml file
-   * TODO: create schema file in build folder for writing routes
-   */
+let configuredRoutes: Routes | null = null;
 
-  const _options = await getRouteOptions(
-    event,
-    LAYERS_MODULE_BASE_PATH,
-    ROUTES_FILE
-  );
-
-  if (!_options) {
-    return {
-      statusCode: 404,
-      body: "requested url not found in the given configuration"
-    };
-  }
-
-  const request = await parseAndValidate(
-    event,
-    LAYERS_MODULE_BASE_PATH,
-    _options
-  );
-
-  event.somodMiddlewareContext.set(SOMOD_HTTP_EXTENSION, {
-    body: request?.body,
-    headers: event.headers,
-    pathParameters: event.pathParameters,
-    queryStringParameters: event.queryStringParameters
-  });
-
-  const result = await next();
-
-  return result;
-};
-
-export const getRouteOptions = async (
-  event: EventWithMiddlewareContext<Copy<EventType>>,
-  basePath: string,
-  routesFile: string
-): Promise<GeneratedOptions> => {
-  let _obj = { routes: {} };
-  const _path = join(basePath, routesFile);
-  try {
-    // eslint-disable-next-line import/no-unresolved
-    _obj = await import(_path);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `dynamic import error, file dose not exists : ${_path} , ${error.message}`
+const getConfiguredRoutes = async () => {
+  if (configuredRoutes === null) {
+    // NOTE: To Match the path used in prepare stage
+    const routesJsonPath = join(
+      __dirname,
+      PATH_HTTP_SCHEMAS,
+      FILE_ROUTES_HTTP_JSON
     );
-    throw new Error("Internal Server Error");
-  }
-
-  const routes = _obj.routes as RoutesTransformed;
-  return routes[event.routeKey];
-};
-
-export const parseAndValidate = async (
-  event: EventWithMiddlewareContext<Copy<EventType>>,
-  basePath: string,
-  options: GeneratedOptions
-): Promise<Request> => {
-  const request = {
-    method: event.requestContext.http.method
-  } as Request;
-
-  if (options.headers?.schema) {
-    validate(event.headers, event.routeKey, InputType.headers, basePath);
-  }
-
-  if (options.pathParameters?.schema) {
-    validate(
-      event.pathParameters,
-      event.routeKey,
-      InputType.pathParameters,
-      basePath
-    );
-  }
-
-  if (options.queryStringParameters?.schema) {
-    validate(
-      event.queryStringParameters,
-      event.routeKey,
-      InputType.queryStringParameters,
-      basePath
-    );
-  }
-
-  /**
-   * parse will not happen if body is empty
-   */
-  request.body = event.body
-    ? await parseBody(
-        event.body,
-        options.body,
-        event.requestContext.http.method
-      )
-    : undefined;
-
-  if (options.body?.schema) {
-    await validate(request.body, event.routeKey, InputType.body, basePath);
-  }
-  return request;
-};
-
-const parseBody = async (
-  body: string,
-  bodyOptions: GeneratedOptions[InputType.body],
-  method: string
-) => {
-  try {
-    if (
-      bodyOptions?.parser !== ParserType.text &&
-      (bodyOptions?.parser == ParserType.json ||
-        method == HttpMethod.POST ||
-        method == HttpMethod.PUT ||
-        method == HttpMethod.DELETE ||
-        method == HttpMethod.PATCH)
-    ) {
-      body = JSON.parse(body);
+    if (!existsSync(routesJsonPath)) {
+      throw new Error("Found no routes at " + routesJsonPath);
     }
-  } catch (error) {
-    throw new Error("Error while parsing request body : " + error.message);
+    const routesStr = await readFile(routesJsonPath, { encoding: "utf8" });
+    const routes = JSON.parse(routesStr);
+    if (typeof routes !== "object") {
+      throw new Error("Invalid routes configuration in " + routesJsonPath);
+    }
+    configuredRoutes = routes;
   }
-  return body;
+  return configuredRoutes as Routes;
 };
 
-export default httpMiddleware;
+const validators: Record<string, ValidateFunction> = {};
+
+const loadValidator = async (
+  path: string,
+  method: string,
+  key: "body" | { name: string; in: "path" | "query" | "header" }
+) => {
+  const validatorPath = getHttpSchemaPath(path, method, key);
+  if (validators[validatorPath] === undefined) {
+    try {
+      validators[validatorPath] = await import(
+        join(__dirname, PATH_HTTP_SCHEMAS, validatorPath)
+      );
+    } catch (e) {
+      // @ts-expect-error this is okay to assign the default validate function here
+      validators[validatorPath] = () => {
+        return true;
+      };
+    }
+  }
+  return validators[validatorPath];
+};
+
+const getMethodAndPath = (event: Event) => {
+  const [method, path] = event.routeKey.split(" ");
+  return { path, method };
+};
+
+const getRouteConfig = async (
+  path: string,
+  method: string
+): Promise<RouteConfig> => {
+  const configuredRoutes = await getConfiguredRoutes();
+  const routeConfig = configuredRoutes[path]?.[method];
+  if (routeConfig === undefined) {
+    throw new NoRouteFoundError(`No route defined for ${method} ${path}`);
+  }
+  return routeConfig;
+};
+
+const validateParameter = async (
+  path: string,
+  method: string,
+  name: string,
+  _in: "path" | "query" | "header",
+  value: string | undefined,
+  required: boolean
+) => {
+  if (required && value === undefined) {
+    throw new Error(`Parameter ${name} must be present in ${_in}`);
+  }
+  if (value !== undefined) {
+    const validator = await loadValidator(path, method, { name, in: _in });
+    const violations = await validate(validator, value);
+    if (violations.length > 0) {
+      throw new BadRequestError(
+        JSON.stringify({
+          message: `Invalid Parameter ${name} in ${_in}`,
+          errors: violations
+        })
+      );
+    }
+  }
+  return value;
+};
+
+const validateParameters = async (
+  path: string,
+  method: string,
+  routeConfig: RouteConfig,
+  event: Event
+): Promise<Request["parameters"]> => {
+  const validatedParameters: Request["parameters"] = {
+    path: {},
+    query: {},
+    header: {}
+  };
+
+  if (routeConfig.parameters) {
+    await Promise.all(
+      routeConfig.parameters.map(async parameter => {
+        let value: string | undefined = undefined;
+        if (parameter.in == "path") {
+          value = event.pathParameters?.[parameter.name];
+        } else if (parameter.in == "query") {
+          value = event.queryStringParameters?.[parameter.name];
+        } else if (parameter.in == "header") {
+          value = event.headers[parameter.name];
+        }
+        validatedParameters[parameter.in][parameter.name] =
+          await validateParameter(
+            path,
+            method,
+            parameter.name,
+            parameter.in,
+            value,
+            parameter.required
+          );
+      })
+    );
+  }
+  return validatedParameters;
+};
+
+const parseBody = (routeConfig: RouteConfig, event: Event) => {
+  let contentType = routeConfig.body?.parser;
+  if (contentType === undefined) {
+    if (event.headers["content-type"]?.includes("application/json")) {
+      contentType = "json";
+    } else if (
+      event.headers["content-type"]?.includes(
+        "application/x-www-form-urlencoded"
+      )
+    ) {
+      contentType = "formdata";
+    } else {
+      contentType = "text";
+    }
+  }
+
+  let parsedBody: string | Record<string, unknown> = event.body || "";
+
+  if (contentType == "json") {
+    parsedBody = JSON.parse(parsedBody);
+  } else if (contentType == "formdata") {
+    parsedBody = decode(parsedBody);
+  }
+
+  return parsedBody;
+};
+
+const validateBody = async (
+  path: string,
+  method: string,
+  routeConfig: RouteConfig,
+  event: Event
+) => {
+  let validatedBody: unknown = undefined;
+  if (routeConfig.body) {
+    const validator = await loadValidator(path, method, "body");
+    const parsedBody = parseBody(routeConfig, event);
+    const violations = await validate(validator, parsedBody);
+    if (violations.length > 0) {
+      throw new BadRequestError(
+        JSON.stringify({
+          message: `Invalid Request Body`,
+          errors: violations
+        })
+      );
+    }
+    validatedBody = parsedBody;
+  }
+  return validatedBody;
+};
+
+const middleware: Middleware<Event, Result> = async (next, event) => {
+  try {
+    const { method, path } = getMethodAndPath(event);
+
+    const routeConfig = await getRouteConfig(path, method);
+
+    const validatedParameters = await validateParameters(
+      path,
+      method,
+      routeConfig,
+      event
+    );
+    const validatedBody = await validateBody(path, method, routeConfig, event);
+
+    const somodHttpRequest: Request = {
+      route: path,
+      method: method,
+      parameters: validatedParameters,
+      body: validatedBody
+    };
+
+    event.somodMiddlewareContext.set(MIDDLEWARE_CONTEXT_KEY, somodHttpRequest);
+
+    return await next();
+  } catch (e) {
+    if (e instanceof NoRouteFoundError) {
+      return {
+        statusCode: 404,
+        body: e.message
+      };
+    } else if (e instanceof BadRequestError) {
+      return {
+        statusCode: 400,
+        body: e.message
+      };
+    } else {
+      // eslint-disable-next-line no-console
+      console.error(e.message);
+      return {
+        statusCode: 500
+      };
+    }
+  }
+};
+
+export default middleware;

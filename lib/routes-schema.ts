@@ -1,5 +1,26 @@
 import { JSONSchema7 } from "json-schema";
 
+export type Routes = Record<
+  string,
+  Record<
+    string,
+    {
+      parameters?: [
+        {
+          in: "path" | "query" | "header";
+          name: string;
+          schema: JSONSchema7;
+          required: boolean;
+        }
+      ];
+      body?: {
+        parser?: "text" | "json" | "formdata";
+        schema: JSONSchema7;
+      };
+    }
+  >
+>;
+
 export const schema: JSONSchema7 = {
   $schema: "http://json-schema.org/draft-07/schema",
   $id: "https://somod-http-extension.sodev.com/routes-schema.json",

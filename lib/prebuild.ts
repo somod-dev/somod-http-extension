@@ -1,4 +1,4 @@
-import { IContext } from "somod";
+import { Extension, IContext } from "somod";
 import { join } from "path";
 import {
   KEYWORD_SOMOD_FUNCTION,
@@ -30,7 +30,9 @@ export const validateHttpYamlFilesSchema = async (context: IContext) => {
   const httpYamlFileViolations: Record<string, Violation[]> = {};
   const schemaValidator = await getValidator(httpYamlSchema);
   for (const httpYamlFile in httpYamlFiles) {
-    const yamlContent = readYamlFileStore(join(functionsDir, httpYamlFile));
+    const yamlContent = await readYamlFileStore(
+      join(functionsDir, httpYamlFile)
+    );
     const violations = await validate({}, yamlContent, schemaValidator);
     if (violations.length > 0) {
       httpYamlFileViolations[httpYamlFile] = violations;
@@ -131,4 +133,9 @@ export const validateHttpYamlFilesForMiddlewares = async (
       )
     );
   }
+};
+
+export const prebuild: Extension["prebuild"] = async context => {
+  await validateHttpYamlFilesForMiddlewares(context);
+  await validateHttpYamlFilesSchema(context);
 };
