@@ -10,5 +10,3 @@ Resources:
           name: httpMiddleware
           allowedTypes:
             - HttpApi
-      Layers:
-        - decorated-ajv
