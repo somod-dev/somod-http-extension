@@ -3,6 +3,7 @@
 Resources:
   SomodHttpMiddleware:
     Type: SOMOD::Serverless::FunctionMiddleware
+    SOMOD::Access: public
     Properties:
       CodeUri:
         SOMOD::FunctionMiddleware:
