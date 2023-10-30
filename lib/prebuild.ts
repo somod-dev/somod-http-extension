@@ -29,7 +29,7 @@ export const validateHttpYamlFilesSchema = async (context: IContext) => {
   );
   const httpYamlFileViolations: Record<string, Violation[]> = {};
   const schemaValidator = await getValidator(httpYamlSchema);
-  for (const httpYamlFile in httpYamlFiles) {
+  for (const httpYamlFile of httpYamlFiles) {
     const yamlContent = await readYamlFileStore(
       join(functionsDir, httpYamlFile)
     );
