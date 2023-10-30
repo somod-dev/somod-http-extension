@@ -27,7 +27,7 @@ const getFunctionMeta = function (CodeUri: string) {
   const functionName = codeUriParts.pop() as string;
   let moduleName = codeUriParts.pop() as string;
 
-  if (codeUriParts[codeUriParts.length - 1] != PATH_SERVERLESS) {
+  if (codeUriParts[codeUriParts.length - 1] != PATH_FUNCTIONS) {
     moduleName = codeUriParts.pop() + "/" + moduleName;
   }
 
