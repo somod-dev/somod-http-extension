@@ -23,7 +23,7 @@ export const build: Extension["build"] = async context => {
   );
 
   await mkdir(functionsBuildDir, { recursive: true });
-  for (const httpYamlFile in httpYamlFiles) {
+  for (const httpYamlFile of httpYamlFiles) {
     const content = await readYamlFileStore(join(functionsDir, httpYamlFile));
     await writeFile(
       join(
