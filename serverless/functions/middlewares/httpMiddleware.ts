@@ -234,11 +234,13 @@ const middleware: Middleware<Event, Result> = async (next, event) => {
     if (e instanceof NoRouteFoundError) {
       return {
         statusCode: 404,
+        headers: { "Content-Type": "application/json" },
         body: e.message
       };
     } else if (e instanceof BadRequestError) {
       return {
         statusCode: 400,
+        headers: { "Content-Type": "application/json" },
         body: e.message
       };
     } else {
