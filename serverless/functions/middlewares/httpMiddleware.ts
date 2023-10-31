@@ -20,6 +20,7 @@ import {
   Result,
   RouteConfig
 } from "../../../lib/types";
+import { pathToFileURL } from "url";
 
 let configuredRoutes: Routes | null = null;
 
@@ -54,10 +55,16 @@ const loadValidator = async (
   const validatorPath = getHttpSchemaPath(path, method, key);
   if (validators[validatorPath] === undefined) {
     try {
-      validators[validatorPath] = await import(
-        join(__dirname, PATH_HTTP_SCHEMAS, validatorPath)
-      );
+      validators[validatorPath] = (
+        await import(
+          pathToFileURL(
+            join(__dirname, PATH_HTTP_SCHEMAS, validatorPath)
+          ).toString()
+        )
+      ).default;
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("Error in loading validator", e);
       // @ts-expect-error this is okay to assign the default validate function here
       validators[validatorPath] = () => {
         return true;
