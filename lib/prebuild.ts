@@ -68,7 +68,7 @@ export const validateHttpYamlFilesForMiddlewares = async (
   context: IContext
 ) => {
   const template = context.serverlessTemplateHandler.getTemplate(
-    context.moduleHandler.roodModuleName
+    context.moduleHandler.rootModuleName
   );
   if (template == null) {
     return;
@@ -93,7 +93,7 @@ export const validateHttpYamlFilesForMiddlewares = async (
       ] || []) as { module?: string; resource: string }[]
     }))
     .filter(f => {
-      !f.middlewares.every(
+      return !f.middlewares.every(
         m =>
           !(
             m.module == SOMOD_HTTP_EXTENSION &&

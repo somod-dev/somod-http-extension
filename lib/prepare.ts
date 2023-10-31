@@ -72,7 +72,7 @@ const getFunctionsWithRoutes = async (context: IContext) => {
     existsSync(
       getRoutesHttpJsonPath(
         context.dir,
-        context.moduleHandler.roodModuleName,
+        context.moduleHandler.rootModuleName,
         name,
         module
       )
@@ -87,7 +87,7 @@ const insertCompiledHttpSchemaIntoFunction = async (
 ) => {
   const routesJsonPath = getRoutesHttpJsonPath(
     context.dir,
-    context.moduleHandler.roodModuleName,
+    context.moduleHandler.rootModuleName,
     name,
     module
   );
