@@ -10,3 +10,4 @@ Resources:
           name: httpMiddleware
           allowedTypes:
             - HttpApi
+            - WebSocket
