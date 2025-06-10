@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=./node_modules/somod-schema/schemas/parameters/index.json
+
+parameters:
+  http.log.4xx:
+    type: boolean
+    default: false

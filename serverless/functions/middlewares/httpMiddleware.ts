@@ -232,12 +232,22 @@ const middleware: Middleware<Event, Result> = async (next, event) => {
     return await next();
   } catch (e) {
     if (e instanceof NoRouteFoundError) {
+      if (process.env.SOMOD_HTTP_LOG_4XX === "true") {
+        const { method, path } = getMethodAndPath(event);
+        // eslint-disable-next-line no-console
+        console.error(method, path, e.message);
+      }
       return {
         statusCode: 404,
         headers: { "Content-Type": "application/json" },
         body: e.message
       };
     } else if (e instanceof BadRequestError) {
+      if (process.env.SOMOD_HTTP_LOG_4XX === "true") {
+        const { method, path } = getMethodAndPath(event);
+        // eslint-disable-next-line no-console
+        console.error(method, path, e.message);
+      }
       return {
         statusCode: 400,
         headers: { "Content-Type": "application/json" },

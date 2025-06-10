@@ -11,3 +11,7 @@ Resources:
           allowedTypes:
             - HttpApi
             - WebSocket
+      Environment:
+        Variables:
+          SOMOD_HTTP_LOG_4XX:
+            SOMOD::Parameter: http.log.4xx

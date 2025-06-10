@@ -189,10 +189,10 @@ RouteBuilder has 2 methods
   > The Raw Event type and Response type is documented [here](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html) in the AWS specification.  
   > This module works with HTTP Payload format version 2.0 only
 
-- `handle`
+- `getHandler`
 
   ```typescript
-  function handle(): (event: RawEvent) => Promise<Response> {
+  function getHandler(): (event: RawEvent) => Promise<Response> {
     //
   }
   ```
