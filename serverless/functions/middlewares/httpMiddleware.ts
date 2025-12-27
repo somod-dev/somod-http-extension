@@ -206,6 +206,35 @@ const validateBody = async (
   return validatedBody;
 };
 
+const sendLogsToAxiom = async (method: string, path: string, statusCode: number, event: Event, error: unknown) => {
+  try {
+    const axiomIngestUrl = process.env.SOMOD_HTTP_AXIOM_INGEST_URL;
+    const axiomIngestToken = process.env.SOMOD_HTTP_AXIOM_INGEST_TOKEN;
+    if (axiomIngestUrl && axiomIngestToken) {
+      await fetch(axiomIngestUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${axiomIngestToken}`
+        },
+        body: JSON.stringify([
+          {
+            method,
+            path,
+            statusCode,
+            event,
+            error,
+            timestamp: new Date().toISOString()
+          }
+        ])
+      });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("Error sending logs to Axiom:", e);
+  }
+};
+
 const middleware: Middleware<Event, Result> = async (next, event) => {
   try {
     const { method, path } = getMethodAndPath(event);
@@ -231,35 +260,36 @@ const middleware: Middleware<Event, Result> = async (next, event) => {
 
     return await next();
   } catch (e) {
-    if (e instanceof NoRouteFoundError) {
-      if (process.env.SOMOD_HTTP_LOG_4XX === "true") {
-        const { method, path } = getMethodAndPath(event);
-        // eslint-disable-next-line no-console
-        console.error(method, path, e.message);
+    const { method, path } = getMethodAndPath(event);
+    const statusCode =
+      e instanceof NoRouteFoundError
+        ? 404
+        : e instanceof BadRequestError
+        ? 400
+        : 500;
+
+    if (process.env.SOMOD_HTTP_LOG_AXIOM_ERROR === "true") {
+        await sendLogsToAxiom(method, path, statusCode, event, e);
       }
-      return {
-        statusCode: 404,
-        headers: { "Content-Type": "application/json" },
-        body: e.message
-      };
-    } else if (e instanceof BadRequestError) {
+
+      //includes 500 errors also
       if (process.env.SOMOD_HTTP_LOG_4XX === "true") {
-        const { method, path } = getMethodAndPath(event);
         // eslint-disable-next-line no-console
-        console.error(method, path, e.message);
+        console.error("backend_api_error: ", statusCode,method, path, e);
       }
-      return {
-        statusCode: 400,
-        headers: { "Content-Type": "application/json" },
-        body: e.message
-      };
-    } else {
-      // eslint-disable-next-line no-console
-      console.error(e.message);
+
+    if(statusCode === 500) {
       return {
         statusCode: 500
       };
     }
+      
+    return {
+        statusCode: statusCode,
+        headers: { "Content-Type": "application/json" },
+        // eslint-disable-next-line no-console
+        body: e.message
+      };
   }
 };
 
