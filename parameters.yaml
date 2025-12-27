@@ -4,3 +4,12 @@ parameters:
   http.log.4xx:
     type: boolean
     default: false
+  http.log.axiom.error:
+    type: boolean
+    default: false
+  http.log.axiom.ingest.url:
+    type: string
+    default: ""
+  http.log.axiom.ingest.token:
+    type: string
+    default: ""

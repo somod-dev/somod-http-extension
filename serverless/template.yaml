@@ -27,3 +27,9 @@ Resources:
         Variables:
           SOMOD_HTTP_LOG_4XX:
             SOMOD::Parameter: http.log.4xx
+          SOMOD_HTTP_LOG_AXIOM_ERROR:
+            SOMOD::Parameter: http.log.axiom.error
+          SOMOD_HTTP_AXIOM_INGEST_URL:
+            SOMOD::Parameter: http.log.axiom.ingest.url
+          SOMOD_HTTP_AXIOM_INGEST_TOKEN:
+            SOMOD::Parameter: http.log.axiom.ingest.token
