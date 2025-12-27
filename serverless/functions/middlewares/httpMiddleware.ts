@@ -21,6 +21,7 @@ import {
   RouteConfig
 } from "../../../lib/types";
 import { pathToFileURL } from "url";
+import fetch from "node-fetch";
 
 let configuredRoutes: Routes | null = null;
 
