@@ -206,7 +206,13 @@ const validateBody = async (
   return validatedBody;
 };
 
-const sendLogsToAxiom = async (method: string, path: string, statusCode: number, event: Event, error: unknown) => {
+const sendLogsToAxiom = async (
+  method: string,
+  path: string,
+  statusCode: number,
+  event: Event,
+  error: unknown
+) => {
   try {
     const axiomIngestUrl = process.env.SOMOD_HTTP_AXIOM_INGEST_URL;
     const axiomIngestToken = process.env.SOMOD_HTTP_AXIOM_INGEST_TOKEN;
@@ -269,27 +275,27 @@ const middleware: Middleware<Event, Result> = async (next, event) => {
         : 500;
 
     if (process.env.SOMOD_HTTP_LOG_AXIOM_ERROR === "true") {
-        await sendLogsToAxiom(method, path, statusCode, event, e);
-      }
+      await sendLogsToAxiom(method, path, statusCode, event, e);
+    }
 
-      //includes 500 errors also
-      if (process.env.SOMOD_HTTP_LOG_4XX === "true") {
-        // eslint-disable-next-line no-console
-        console.error("backend_api_error: ", statusCode,method, path, e);
-      }
+    //includes 500 errors also
+    if (process.env.SOMOD_HTTP_LOG_4XX === "true") {
+      // eslint-disable-next-line no-console
+      console.error("backend_api_error: ", statusCode, method, path, e);
+    }
 
-    if(statusCode === 500) {
+    if (statusCode === 500) {
       return {
         statusCode: 500
       };
     }
-      
+
     return {
-        statusCode: statusCode,
-        headers: { "Content-Type": "application/json" },
-        // eslint-disable-next-line no-console
-        body: e.message
-      };
+      statusCode: statusCode,
+      headers: { "Content-Type": "application/json" },
+      // eslint-disable-next-line no-console
+      body: e.message
+    };
   }
 };
 
